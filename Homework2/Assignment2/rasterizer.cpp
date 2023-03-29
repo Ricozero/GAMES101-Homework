@@ -75,11 +75,11 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
                 mvp * to_vec4(buf[i[1]], 1.0f),
                 mvp * to_vec4(buf[i[2]], 1.0f)
         };
-        //Homogeneous division
+        // Homogeneous division
         for (auto& vec : v) {
             vec /= vec.w();
         }
-        //Viewport transformation
+        // Viewport transformation
         for (auto & vert : v)
         {
             vert.x() = 0.5*width*(vert.x()+1.0);
@@ -103,18 +103,26 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
         t.setColor(2, col_z[0], col_z[1], col_z[2]);
 
         rasterize_triangle(t);
+        // rasterize_triangle_supersampling(t);
     }
 }
 
-//Screen space rasterization
+// Screen space rasterization
 void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     auto v = t.toVector4();
-    // printf("%f %f %f, %f %f %f, %f %f %f\n", t.v[0].x(), t.v[0].y(), t.v[0].z(), t.v[1].x(), t.v[1].y(), t.v[1].z(), t.v[2].x(), t.v[2].y(), t.v[2].z());
 
     // TODO : Find out the bounding box of current triangle.
     // iterate through the pixel and find if the current pixel is inside the triangle
-    for (int y = 0;y < height;++y)
-        for (int x = 0; x < width; ++x)
+    int x_min = std::min(t.v[0].x(), std::min(t.v[1].x(), t.v[2].x()));
+    int x_max = std::max(t.v[0].x(), std::max(t.v[1].x(), t.v[2].x())) + 1;
+    int y_min = std::min(t.v[0].y(), std::min(t.v[1].y(), t.v[2].y()));
+    int y_max = std::max(t.v[0].y(), std::max(t.v[1].y(), t.v[2].y())) + 1;
+    x_min = std::max(0, x_min);
+    x_max = std::min(width, x_max);
+    y_min = std::max(0, y_min);
+    y_max = std::min(height, y_max);
+    for (int y = y_min;y < y_max;++y)
+        for (int x = x_min; x < x_max; ++x)
             if (insideTriangle({ x + 0.5, y + 0.5 }, { t.v[0].x(), t.v[0].y() }, { t.v[1].x(), t.v[1].y() }, { t.v[2].x(), t.v[2].y() })) {
                 // If so, use the following code to get the interpolated z value.
                 auto[alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
@@ -127,6 +135,49 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
                     set_pixel({ float(x), float(y), z_interpolated}, t.getColor());
                 }
             }
+}
+
+// Current version of SSAA is wrong, the whole super-sampled image should have been stored.
+void rst::rasterizer::rasterize_triangle_supersampling(const Triangle& t) {
+    auto v = t.toVector4();
+
+    int x_min = std::min(t.v[0].x(), std::min(t.v[1].x(), t.v[2].x()));
+    int x_max = std::max(t.v[0].x(), std::max(t.v[1].x(), t.v[2].x())) + 1;
+    int y_min = std::min(t.v[0].y(), std::min(t.v[1].y(), t.v[2].y()));
+    int y_max = std::max(t.v[0].y(), std::max(t.v[1].y(), t.v[2].y())) + 1;
+    x_min = std::max(0, x_min);
+    x_max = std::min(width, x_max);
+    y_min = std::max(0, y_min);
+    y_max = std::min(height, y_max);
+    for (int y = y_min; y < y_max; ++y)
+        for (int x = x_min; x < x_max; ++x) {
+            std::vector<std::vector<int>> inside = std::vector(2, std::vector(2, 0));
+            std::vector<std::vector<float>> depth = std::vector(2, std::vector(2, .0f));
+            for (int yy = 0; yy < 2; ++yy)
+                for (int xx = 0; xx < 2; ++xx)
+                    if (insideTriangle({ x + xx / 2. + 0.5, y + yy / 2. + 0.5 }, { t.v[0].x(), t.v[0].y() }, { t.v[1].x(), t.v[1].y() }, { t.v[2].x(), t.v[2].y() })) {
+                        auto [alpha, beta, gamma] = computeBarycentric2D(x + xx / 2., y + yy / 2., t.v);
+                        float w_reciprocal = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+                        float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+                        z_interpolated *= w_reciprocal;
+                        if (z_interpolated < depth_buf[get_index(x, y)]) {
+                            inside[yy][xx] = 1;
+                            depth[yy][xx] = z_interpolated;
+                        }
+                    }
+            int sum = inside[0][0] + inside[0][1] + inside[1][0] + inside[1][1];
+            if (sum > 0) {
+                float z_average = 0;
+                for (int yy = 0; yy < 2; ++yy)
+                    for (int xx = 0; xx < 2; ++xx)
+                        if (inside[yy][xx] == 1)
+                            z_average += depth[yy][xx];
+                if (z_average < depth_buf[get_index(x, y)]) {
+                    depth_buf[get_index(x, y)] = z_average;
+                    set_pixel({ float(x), float(y), z_average }, t.getColor() * sum / 4);
+                }
+            }
+        }
 }
 
 void rst::rasterizer::set_model(const Eigen::Matrix4f& m)

@@ -33,6 +33,9 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio, float z
     // TODO: Copy-paste your implementation from the previous assignment.
     Eigen::Matrix4f projection;
 
+    // My implementation is from the tiger book, where z+ points out of screen, while in this homework, z+ points into the screen.
+    // If n = zNear, f = zFar, the image is rotated 180 degrees, but the depth relationship is correct.
+    // If n = -zNear, f = -zFar, the image is not rotated, but the depth relationship is wrong.
     eye_fov *= MY_PI / 180;
     float n = -zFar, f = -zNear, h = abs(2 * n * tan(eye_fov / 2)), t = h / 2, b = -t, l = -aspect_ratio * h / 2, r = -l;
     projection << 2 * n / (r - l), 0, (l + r) / (l - r), 0,
@@ -127,7 +130,7 @@ int main(int argc, const char** argv)
         cv::imshow("image", image);
         key = cv::waitKey(10);
 
-        // std::cout << "frame count: " << frame_count++ << '\n';
+        std::cout << "frame count: " << frame_count++ << '\n';
     }
 
     return 0;
