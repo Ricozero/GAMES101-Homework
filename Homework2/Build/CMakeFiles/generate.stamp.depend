@@ -1,0 +1,32 @@
+# CMake generation dependency list for this directory.
+C:/Program Files/CMake/share/cmake-3.25/Modules/CMakeCInformation.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/CMakeCXXInformation.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/CMakeCommonLanguageInclude.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/CMakeGenericSystem.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/CMakeInitializeConfigs.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/CMakeLanguageInformation.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/CMakeRCInformation.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/CMakeSystemSpecificInformation.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/CMakeSystemSpecificInitialize.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/Compiler/CMakeCommonCompilerMacros.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/Compiler/MSVC-C.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/Compiler/MSVC-CXX.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/Compiler/MSVC.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/FindPackageHandleStandardArgs.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/FindPackageMessage.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/Platform/Windows-MSVC-C.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/Platform/Windows-MSVC-CXX.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/Platform/Windows-MSVC.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/Platform/Windows.cmake
+C:/Program Files/CMake/share/cmake-3.25/Modules/Platform/WindowsPaths.cmake
+D:/Projects/GameDev/GAMES101/Homework2/Assignment2/CMakeLists.txt
+D:/Projects/GameDev/GAMES101/Homework2/Build/CMakeFiles/3.25.1/CMakeCCompiler.cmake
+D:/Projects/GameDev/GAMES101/Homework2/Build/CMakeFiles/3.25.1/CMakeCXXCompiler.cmake
+D:/Projects/GameDev/GAMES101/Homework2/Build/CMakeFiles/3.25.1/CMakeRCCompiler.cmake
+D:/Projects/GameDev/GAMES101/Homework2/Build/CMakeFiles/3.25.1/CMakeSystem.cmake
+D:/Projects/Libs/opencv-4.7.0/build/OpenCVConfig-version.cmake
+D:/Projects/Libs/opencv-4.7.0/build/OpenCVConfig.cmake
+D:/Projects/Libs/opencv-4.7.0/build/x64/vc16/lib/OpenCVConfig.cmake
+D:/Projects/Libs/opencv-4.7.0/build/x64/vc16/lib/OpenCVModules-debug.cmake
+D:/Projects/Libs/opencv-4.7.0/build/x64/vc16/lib/OpenCVModules-release.cmake
+D:/Projects/Libs/opencv-4.7.0/build/x64/vc16/lib/OpenCVModules.cmake
