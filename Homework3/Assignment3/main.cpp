@@ -50,7 +50,19 @@ Eigen::Matrix4f get_model_matrix(float angle)
 Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio, float zNear, float zFar)
 {
     // TODO: Use the same projection matrix from the previous assignments
+    Eigen::Matrix4f projection;
 
+    // My implementation is from the tiger book, where z+ points out of screen, while in this homework, z+ points into the screen.
+    // If n = zNear, f = zFar, the image is rotated 180 degrees, but the depth relationship is correct.
+    // If n = -zNear, f = -zFar, the image is not rotated, but the depth relationship is wrong.
+    eye_fov *= MY_PI / 180;
+    float n = -zFar, f = -zNear, h = abs(2 * n * tan(eye_fov / 2)), t = h / 2, b = -t, l = -aspect_ratio * h / 2, r = -l;
+    projection << 2 * n / (r - l), 0, (l + r) / (l - r), 0,
+        0, 2 * n / (t - b), (b + t) / (b - t), 0,
+        0, 0, (f + n) / (n - f), 2 * f * n / (f - n),
+        0, 0, 1, 0;
+
+    return projection;
 }
 
 Eigen::Vector3f vertex_shader(const vertex_shader_payload& payload)
@@ -247,10 +259,10 @@ int main(int argc, const char** argv)
 
     std::string filename = "output.png";
     objl::Loader Loader;
-    std::string obj_path = "../models/spot/";
+    std::string obj_path = "../Assignment3/models/spot/";
 
     // Load .obj File
-    bool loadout = Loader.LoadFile("../models/spot/spot_triangulated_good.obj");
+    bool loadout = Loader.LoadFile("../Assignment3/models/spot/spot_triangulated_good.obj");
     for(auto mesh:Loader.LoadedMeshes)
     {
         for(int i=0;i<mesh.Vertices.size();i+=3)
