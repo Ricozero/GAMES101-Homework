@@ -131,10 +131,10 @@ public:
     bool intersect(const Ray& ray, float& tnear, uint32_t& index) const
     {
         bool intersect = false;
-        for (uint32_t k = 0; k < numTriangles; ++k) {
-            const Vector3f& v0 = vertices[vertexIndex[k * 3]];
-            const Vector3f& v1 = vertices[vertexIndex[k * 3 + 1]];
-            const Vector3f& v2 = vertices[vertexIndex[k * 3 + 2]];
+        for (uint32_t k = 0; k < triangles.size(); ++k) {
+            const Vector3f& v0 = triangles[k].v0;
+            const Vector3f& v1 = triangles[k].v1;
+            const Vector3f& v2 = triangles[k].v2;
             float t, u, v;
             if (rayTriangleIntersect(v0, v1, v2, ray.origin, ray.direction, t,
                                      u, v) &&
@@ -154,16 +154,16 @@ public:
                               const uint32_t& index, const Vector2f& uv,
                               Vector3f& N, Vector2f& st) const
     {
-        const Vector3f& v0 = vertices[vertexIndex[index * 3]];
-        const Vector3f& v1 = vertices[vertexIndex[index * 3 + 1]];
-        const Vector3f& v2 = vertices[vertexIndex[index * 3 + 2]];
+        const Vector3f& v0 = triangles[index].v0;
+        const Vector3f& v1 = triangles[index].v1;
+        const Vector3f& v2 = triangles[index].v2;
         Vector3f e0 = normalize(v1 - v0);
         Vector3f e1 = normalize(v2 - v1);
         N = normalize(crossProduct(e0, e1));
-        const Vector2f& st0 = stCoordinates[vertexIndex[index * 3]];
-        const Vector2f& st1 = stCoordinates[vertexIndex[index * 3 + 1]];
-        const Vector2f& st2 = stCoordinates[vertexIndex[index * 3 + 2]];
-        st = st0 * (1 - uv.x - uv.y) + st1 * uv.x + st2 * uv.y;
+        //const Vector2f& st0 = stCoordinates[vertexIndex[index * 3]];
+        //const Vector2f& st1 = stCoordinates[vertexIndex[index * 3 + 1]];
+        //const Vector2f& st2 = stCoordinates[vertexIndex[index * 3 + 2]];
+        //st = st0 * (1 - uv.x - uv.y) + st1 * uv.x + st2 * uv.y;
     }
 
     Vector3f evalDiffuseColor(const Vector2f& st) const
@@ -230,11 +230,16 @@ inline Intersection Triangle::getIntersection(Ray ray)
     if (v < 0 || u + v > 1)
         return inter;
     t_tmp = dotProduct(e2, qvec) * det_inv;
+    if (t_tmp < 0)
+        return inter;
 
     // TODO find ray triangle intersection
-
-
-
+    inter.happened = true;
+    inter.distance = t_tmp;
+    inter.coords = ray.origin + ray.direction * t_tmp;
+    inter.normal = normal;
+    inter.m = m;
+    inter.obj = this;
 
     return inter;
 }
