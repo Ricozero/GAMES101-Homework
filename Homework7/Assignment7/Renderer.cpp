@@ -26,8 +26,10 @@ void Renderer::Render(const Scene& scene)
     // change the spp value to change sample ammount
     int spp = 16;
     std::cout << "SPP: " << spp << "\n";
-    for (uint32_t j = 0; j < scene.height; ++j) {
-        for (uint32_t i = 0; i < scene.width; ++i) {
+
+    #pragma omp parallel for
+    for (int j = 0; j < scene.height; ++j) {
+        for (int i = 0; i < scene.width; ++i) {
             // generate primary ray direction
             float x = (2 * (i + 0.5) / (float)scene.width - 1) *
                       imageAspectRatio * scale;
@@ -35,11 +37,10 @@ void Renderer::Render(const Scene& scene)
 
             Vector3f dir = normalize(Vector3f(-x, y, 1));
             for (int k = 0; k < spp; k++){
-                framebuffer[m] += scene.castRay(Ray(eye_pos, dir), 0) / spp;  
+                framebuffer[j * scene.width + i] += scene.castRay(Ray(eye_pos, dir), 0) / spp;
             }
-            m++;
         }
-        UpdateProgress(j / (float)scene.height);
+        UpdateProgress(m++ / (float)scene.height);
     }
     UpdateProgress(1.f);
 
@@ -53,5 +54,5 @@ void Renderer::Render(const Scene& scene)
         color[2] = (unsigned char)(255 * std::pow(clamp(0, 1, framebuffer[i].z), 0.6f));
         fwrite(color, 1, 3, fp);
     }
-    fclose(fp);    
+    fclose(fp);
 }
