@@ -5,6 +5,7 @@ set(APPLICATION_SOURCE
     rope.cpp
     application.cpp
     main.cpp
+    getopt.c
 )
 
 #-------------------------------------------------------------------------------

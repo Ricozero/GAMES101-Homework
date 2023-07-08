@@ -13,7 +13,6 @@ set(CGL_SOURCE
     complex.cpp
     color.cpp
     osdtext.cpp
-    osdfont.c
     viewer.cpp
     base64.cpp
     tinyxml2.cpp
@@ -30,6 +29,7 @@ set(CGL_HEADER
     quaternion.h
     complex.h
     color.h
+    osdfont.h
     osdtext.h
     viewer.h
     base64.h

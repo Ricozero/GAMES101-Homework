@@ -7,6 +7,7 @@
 #include "GL/glew.h"
 
 #include "color.h"
+#include "osdfont.h"
 
 // forward declare freetype stuff 
 struct FT_LibraryRec_; 
@@ -15,9 +16,6 @@ struct FT_FaceRec_;
 typedef struct FT_FaceRec_*  FT_Face;
 
 namespace CGL {
-
-// base64 encoded embeded font
-extern "C" char osdfont_base64[];
 
 struct OSDLine {
   

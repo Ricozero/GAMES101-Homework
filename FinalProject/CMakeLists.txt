@@ -110,6 +110,9 @@ if(WIN32)
 
   if(MSVC)
 
+    add_compile_definitions(_USE_MATH_DEFINES)
+    add_compile_definitions(GLEW_STATIC)
+
     set(MSVC_CXX_FLAGS "-std=gnu++11")
 
     if(BUILD_DEBUG)
