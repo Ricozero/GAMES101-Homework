@@ -1,6 +1,6 @@
 project(GLFW C)
 
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.10)
 
 if (CMAKE_VERSION VERSION_EQUAL "3.0" OR CMAKE_VERSION VERSION_GREATER "3.0")
     # Until all major package systems have moved to CMake 3,
