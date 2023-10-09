@@ -6,6 +6,8 @@ set(APPLICATION_SOURCE
     application.cpp
     main.cpp
     getopt.c
+    imgui/imgui_impl_opengl3.cpp
+    imgui/imgui_impl_glfw.cpp
 )
 
 #-------------------------------------------------------------------------------
@@ -40,6 +42,7 @@ target_link_libraries( ropesim
     ${OPENGL_LIBRARIES}
     ${FREETYPE_LIBRARIES}
     ${CMAKE_THREADS_INIT}
+    imgui::imgui
 )
 
 #-------------------------------------------------------------------------------

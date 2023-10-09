@@ -41,11 +41,11 @@ int main(int argc, char **argv) {
     }
   }
 
-  // create application
-  Application *app = new Application(config);
-
   // create viewer
   Viewer viewer = Viewer();
+
+  // create application
+  Application *app = new Application(config, &viewer);
 
   // set renderer
   viewer.set_renderer(app);

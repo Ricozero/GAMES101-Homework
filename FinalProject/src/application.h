@@ -39,7 +39,7 @@ struct AppConfig {
 
 class Application : public Renderer {
 public:
-  Application(AppConfig config);
+  Application(AppConfig config, Viewer* viewer);
   ~Application();
 
   void init();
@@ -55,6 +55,7 @@ public:
   // void mouse_event(int key, int event, unsigned char mods);
 
 private:
+  Viewer* viewer;
   AppConfig config;
 
   Rope *ropeEuler;

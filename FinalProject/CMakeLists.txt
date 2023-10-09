@@ -112,6 +112,7 @@ if(WIN32)
 
     add_compile_definitions(_USE_MATH_DEFINES)
     add_compile_definitions(GLEW_STATIC)
+    add_compile_definitions(GLFW_EXPOSE_NATIVE_WGL)
 
     set(MSVC_CXX_FLAGS "-std=gnu++11")
 
@@ -147,6 +148,7 @@ endif(WIN32)
 find_package(OpenGL REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Freetype REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 
 # CGL
 if(BUILD_LIBCGL)

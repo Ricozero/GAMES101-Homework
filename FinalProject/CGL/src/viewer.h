@@ -59,6 +59,8 @@ class Viewer {
    */
   void set_renderer( Renderer *renderer );
 
+  static GLFWwindow* get_window() { return window; }
+
  private:
 
   /**

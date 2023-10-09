@@ -1,13 +1,21 @@
 #include <iostream>
 
+#include <imgui.h>
+#include "imgui/imgui_impl_opengl3.h"
+#include "imgui/imgui_impl_glfw.h"
+
 #include "application.h"
 #include "rope.h"
 
 namespace CGL {
 
-Application::Application(AppConfig config) { this->config = config; }
+Application::Application(AppConfig config, Viewer* viewer) : config(config), viewer(viewer) { }
 
-Application::~Application() {}
+Application::~Application() {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
 
 void Application::init() {
   // Enable anti-aliasing and circular points.
@@ -27,9 +35,22 @@ void Application::init() {
                        config.ks, {0});
   ropeVerlet = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass,
                         config.ks, {0});
+
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+  ImGui_ImplGlfw_InitForOpenGL(viewer->get_window(), true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+  ImGui_ImplOpenGL3_Init();
 }
 
 void Application::render() {
+  ImGui_ImplOpenGL3_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
+  ImGui::ShowDemoWindow(); // Show demo window! :)
+
   //Simulation loops
   for (int i = 0; i < config.steps_per_frame; i++) {
     ropeEuler->simulateEuler(1 / config.steps_per_frame, config.gravity);
@@ -68,6 +89,12 @@ void Application::render() {
     glEnd();
 
     glFlush();
+
+    float f;
+    char buf[100];
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   }
 }
 
