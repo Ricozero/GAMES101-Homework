@@ -7,128 +7,144 @@
 #include "application.h"
 #include "rope.h"
 
-namespace CGL {
+namespace CGL
+{
 
-Application::Application(AppConfig config, Viewer* viewer) : config(config), viewer(viewer) { }
+    Application::Application(AppConfig config, Viewer *viewer) : config(config), viewer(viewer) {}
 
-Application::~Application() {
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-}
-
-void Application::init() {
-  // Enable anti-aliasing and circular points.
-  glEnable(GL_LINE_SMOOTH);
-  glEnable(GL_POLYGON_SMOOTH);
-  glEnable(GL_POINT_SMOOTH);
-  glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-  glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
-  glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
-
-  glPointSize(8);
-  glLineWidth(4);
-
-  glColor3f(1.0, 1.0, 1.0);
-  // Create two ropes 
-  ropeEuler = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass,
-                       config.ks, {0});
-  ropeVerlet = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass,
-                        config.ks, {0});
-
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  ImGuiIO& io = ImGui::GetIO();
-  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-  io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-  ImGui_ImplGlfw_InitForOpenGL(viewer->get_window(), true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
-  ImGui_ImplOpenGL3_Init();
-}
-
-void Application::render() {
-  ImGui_ImplOpenGL3_NewFrame();
-  ImGui_ImplGlfw_NewFrame();
-  ImGui::NewFrame();
-  ImGui::ShowDemoWindow(); // Show demo window! :)
-
-  //Simulation loops
-  for (int i = 0; i < config.steps_per_frame; i++) {
-    ropeEuler->simulateEuler(1 / config.steps_per_frame, config.gravity);
-    ropeVerlet->simulateVerlet(1 / config.steps_per_frame, config.gravity);
-  }
-  // Rendering ropes
-  Rope *rope;
-
-  for (int i = 0; i < 2; i++) {
-    if (i == 0) {
-      glColor3f(0.0, 0.0, 1.0);
-      rope = ropeEuler;
-    } else {
-      glColor3f(0.0, 1.0, 0.0);
-      rope = ropeVerlet;
+    Application::~Application()
+    {
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
     }
 
-    glBegin(GL_POINTS);
+    void Application::init()
+    {
+        // Enable anti-aliasing and circular points.
+        glEnable(GL_LINE_SMOOTH);
+        glEnable(GL_POLYGON_SMOOTH);
+        glEnable(GL_POINT_SMOOTH);
+        glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+        glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+        glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
 
-    for (auto &m : rope->masses) {
-      Vector2D p = m->position;
-      glVertex2d(p.x, p.y);
+        glPointSize(8);
+        glLineWidth(4);
+
+        glColor3f(1.0, 1.0, 1.0);
+        // Create two ropes
+        ropeEuler = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass,
+                             config.ks, {0});
+        ropeVerlet = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass,
+                              config.ks, {0});
+
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO &io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+        ImGui_ImplGlfw_InitForOpenGL(viewer->get_window(), true); // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+        ImGui_ImplOpenGL3_Init();
     }
 
-    glEnd();
+    void Application::render()
+    {
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::ShowDemoWindow(); // Show demo window! :)
 
-    glBegin(GL_LINES);
+        // Simulation loops
+        for (int i = 0; i < config.steps_per_frame; i++)
+        {
+            ropeEuler->simulateEuler(1 / config.steps_per_frame, config.gravity);
+            ropeVerlet->simulateVerlet(1 / config.steps_per_frame, config.gravity);
+        }
+        // Rendering ropes
+        Rope *rope;
 
-    for (auto &s : rope->springs) {
-      Vector2D p1 = s->m1->position;
-      Vector2D p2 = s->m2->position;
-      glVertex2d(p1.x, p1.y);
-      glVertex2d(p2.x, p2.y);
+        for (int i = 0; i < 2; i++)
+        {
+            if (i == 0)
+            {
+                glColor3f(0.0, 0.0, 1.0);
+                rope = ropeEuler;
+            }
+            else
+            {
+                glColor3f(0.0, 1.0, 0.0);
+                rope = ropeVerlet;
+            }
+
+            glBegin(GL_POINTS);
+
+            for (auto &m : rope->masses)
+            {
+                Vector2D p = m->position;
+                glVertex2d(p.x, p.y);
+            }
+
+            glEnd();
+
+            glBegin(GL_LINES);
+
+            for (auto &s : rope->springs)
+            {
+                Vector2D p1 = s->m1->position;
+                Vector2D p2 = s->m2->position;
+                glVertex2d(p1.x, p1.y);
+                glVertex2d(p2.x, p2.y);
+            }
+
+            glEnd();
+
+            glFlush();
+
+            float f;
+            char buf[100];
+
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        }
     }
 
-    glEnd();
+    void Application::resize(size_t w, size_t h)
+    {
+        screen_width = w;
+        screen_height = h;
 
-    glFlush();
+        float half_width = (float)screen_width / 2;
+        float half_height = (float)screen_height / 2;
 
-    float f;
-    char buf[100];
-
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-  }
-}
-
-void Application::resize(size_t w, size_t h) {
-  screen_width = w;
-  screen_height = h;
-
-  float half_width = (float)screen_width / 2;
-  float half_height = (float)screen_height / 2;
-
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glOrtho(-half_width, half_width, -half_height, half_height, 1, 0);
-}
-
-void Application::keyboard_event(int key, int event, unsigned char mods) {
-  switch (key) {
-  case '-':
-    if (config.steps_per_frame > 1) {
-      config.steps_per_frame /= 2;
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(-half_width, half_width, -half_height, half_height, 1, 0);
     }
-    break;
-  case '=':
-    config.steps_per_frame *= 2;
-    break;
-  }
-}
 
-string Application::name() { return "Rope Simulator"; }
+    void Application::keyboard_event(int key, int event, unsigned char mods)
+    {
+        switch (key)
+        {
+        case '-':
+            if (config.steps_per_frame > 1)
+            {
+                config.steps_per_frame /= 2;
+            }
+            break;
+        case '=':
+            config.steps_per_frame *= 2;
+            break;
+        }
+    }
 
-string Application::info() {
-  ostringstream steps;
-  steps << "Steps per frame: " << config.steps_per_frame;
+    string Application::name() { return "Rope Simulator"; }
 
-  return steps.str();
-}
+    string Application::info()
+    {
+        ostringstream steps;
+        steps << "Steps per frame: " << config.steps_per_frame;
+
+        return steps.str();
+    }
 }

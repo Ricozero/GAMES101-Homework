@@ -6,25 +6,26 @@
 
 using namespace CGL;
 
-struct Mass {
-  Mass(Vector2D position, float mass, bool pinned)
-      : start_position(position), position(position), last_position(position),
-        mass(mass), pinned(pinned) {}
+struct Mass
+{
+    Mass(Vector2D position, float mass, bool pinned)
+        : start_position(position), position(position), last_position(position),
+          mass(mass), pinned(pinned) {}
 
-  float mass;
-  bool pinned;
+    float mass;
+    bool pinned;
 
-  Vector2D start_position;
-  Vector2D position;
+    Vector2D start_position;
+    Vector2D position;
 
-  // explicit Verlet integration
+    // explicit Verlet integration
 
-  Vector2D last_position;
+    Vector2D last_position;
 
-  // explicit Euler integration
+    // explicit Euler integration
 
-  Vector2D velocity;
-  Vector2D forces;
+    Vector2D velocity;
+    Vector2D forces;
 };
 
 #endif /* MASS_H */

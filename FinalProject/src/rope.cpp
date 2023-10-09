@@ -7,22 +7,24 @@
 #include "rope.h"
 #include "spring.h"
 
-namespace CGL {
-
+namespace CGL
+{
     Rope::Rope(Vector2D start, Vector2D end, int num_nodes, float node_mass, float k, vector<int> pinned_nodes)
     {
         // TODO (Part 1): Create a rope starting at `start`, ending at `end`, and containing `num_nodes` nodes.
         masses.push_back(new Mass(start, node_mass, false));
         Vector2D cur_position = start, step = (end - start) / (num_nodes - 1);
-        for (int i = 1; i < num_nodes; ++i) {
+        for (int i = 1; i < num_nodes; ++i)
+        {
             cur_position += step;
             masses.push_back(new Mass(cur_position, node_mass, false));
             springs.push_back(new Spring(masses[i - 1], masses[i], k));
         }
 
-       for (auto &i : pinned_nodes) {
-           masses[i]->pinned = true;
-       }
+        for (auto &i : pinned_nodes)
+        {
+            masses[i]->pinned = true;
+        }
     }
 
     void Rope::simulateEuler(float delta_t, Vector2D gravity)
