@@ -53,7 +53,43 @@ namespace CGL
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        ImGui::ShowDemoWindow(); // Show demo window! :)
+        ImGui::SetNextWindowSize({ -1, -1 });
+
+        {
+            ImGui::Begin("Config");
+
+            ImGui::SliderFloat("mass", &config.mass, 0, 10);
+            ImGui::SameLine();
+            if (ImGui::Button("Reset##1"))
+                config.mass = 1;
+
+            ImGui::SliderFloat("ks", &config.ks, 0, 1000);
+            ImGui::SameLine();
+            if (ImGui::Button("Reset##2"))
+                config.ks = 100;
+
+            static float gravity = 1;
+            ImGui::SliderFloat("gravity", &gravity, -10, 10);
+            config.gravity = gravity * Vector2D(0, -1);
+            ImGui::SameLine();
+            if (ImGui::Button("Reset##3"))
+            {
+                gravity = 1;
+                config.gravity = Vector2D(0, -1);
+            }
+
+            static int steps_per_frame = 64;
+            ImGui::SliderInt("steps_per_frame", &steps_per_frame, 0, 1000);
+            config.steps_per_frame = (float)steps_per_frame;
+            ImGui::SameLine();
+            if (ImGui::Button("Reset##4"))
+            {
+                steps_per_frame = 64;
+                config.steps_per_frame = (float)64;
+            }
+
+            ImGui::End();
+        }
 
         // Simulation loops
         for (int i = 0; i < config.steps_per_frame; i++)
@@ -100,9 +136,6 @@ namespace CGL
             glEnd();
 
             glFlush();
-
-            float f;
-            char buf[100];
 
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

@@ -30,14 +30,14 @@ int main(int argc, char **argv)
         switch (opt)
         {
         case 'm':
-            config.mass = atof(optarg);
+            config.mass = (float)atof(optarg);
             break;
         case 'g':
             config.gravity = Vector2D(atof(argv[optind - 1]), atof(argv[optind]));
             optind++;
             break;
         case 's':
-            config.steps_per_frame = atoi(optarg);
+            config.steps_per_frame = (float)atoi(optarg);
             break;
         default:
             usage(argv[0]);
