@@ -2,10 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 
 # Application source
 set(APPLICATION_SOURCE
-    rope.cpp
     application.cpp
     main.cpp
-    getopt.c
     imgui/imgui_impl_opengl3.cpp
     imgui/imgui_impl_glfw.cpp
 )

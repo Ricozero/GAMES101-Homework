@@ -1,75 +1,68 @@
-#ifndef CGL_APPLICATION_H
-#define CGL_APPLICATION_H
+#ifndef APPLICATION_H
+#define APPLICATION_H
 
-// STL
 #include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
-// libCGL
-#include "CGL/CGL.h"
-#include "CGL/osdtext.h"
+#include "CGL/vector2D.h"
 #include "CGL/renderer.h"
 
-#include "rope.h"
+#include "mass.h"
 
-using namespace std;
-
-namespace CGL
+struct AppConfig
 {
-
-    struct AppConfig
+    AppConfig()
     {
-        AppConfig()
-        {
-            // Rope config variables
-            mass = 1;
-            ks = 100;
+        // Rope config variables
+        mass = 1;
+        ks = 100;
 
-            // Environment variables
-            gravity = Vector2D(0, -1);
-            steps_per_frame = 64;
-        }
+        // Environment variables
+        gravity = Vector2D(0, -1);
+        steps_per_frame = 64;
+    }
 
-        float mass;
-        float ks;
+    float mass;
+    float ks;
 
-        float steps_per_frame;
-        Vector2D gravity;
-    };
+    float steps_per_frame;
+    Vector2D gravity;
+};
 
-    class Application : public Renderer
+class Application : public Renderer
+{
+public:
+    Application(AppConfig config, Viewer *viewer): config(config), viewer(viewer) {}
+    ~Application();
+
+    void init();
+    void render();
+    void resize(size_t w, size_t h);
+
+    string name() { return "Rope Simulator"; }
+    string info()
     {
-    public:
-        Application(AppConfig config, Viewer *viewer);
-        ~Application();
+        const static string prompt = "FPS: ";
+        static auto t_old = std::chrono::high_resolution_clock::now();
+        auto t_now = std::chrono::high_resolution_clock::now();
+        double t_elapsed = std::chrono::duration<double, std::milli>(t_now - t_old).count();
+        t_old = t_now;
+        int fps = int(1000 / t_elapsed);
+        return prompt + to_string(fps);
+    }
 
-        void init();
-        void render();
-        void resize(size_t w, size_t h);
+private:
+    const Viewer *viewer;
+    AppConfig config;
 
-        std::string name();
-        std::string info();
+    Rope *ropeEuler;
+    Rope *ropeVerlet;
 
-        void keyboard_event(int key, int event, unsigned char mods);
-        // void cursor_event(float x, float y);
-        // void scroll_event(float offset_x, float offset_y);
-        // void mouse_event(int key, int event, unsigned char mods);
+    size_t screen_width;
+    size_t screen_height;
+};
 
-    private:
-        Viewer *viewer;
-        AppConfig config;
-
-        Rope *ropeEuler;
-        Rope *ropeVerlet;
-
-        size_t screen_width;
-        size_t screen_height;
-
-    }; // class Application
-
-} // namespace CGL
-
-#endif // CGL_APPLICATION_H
+#endif // APPLICATION_H
