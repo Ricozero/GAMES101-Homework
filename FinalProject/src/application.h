@@ -14,7 +14,7 @@
 
 static const float DEFAULT_MASS = 1;
 static const float DEFAULT_KS = 100;
-static const Vector2D DEFAULT_GRAVITY =  Vector2D(0, -10);
+static const Vector2D DEFAULT_GRAVITY =  Vector2D(0, -1);
 static const float DEFAULT_STEPS_PER_FRAME = 64;
 
 struct AppConfig
@@ -28,6 +28,7 @@ struct AppConfig
         // Environment variables
         gravity = DEFAULT_GRAVITY;
         steps_per_frame = DEFAULT_STEPS_PER_FRAME;
+        realtime = false;
     }
 
     float mass;
@@ -35,6 +36,7 @@ struct AppConfig
 
     Vector2D gravity;
     float steps_per_frame;
+    bool realtime;
 };
 
 class Application : public Renderer
@@ -46,6 +48,9 @@ public:
     void init();
     void render();
     void resize(size_t w, size_t h);
+
+    void create_scene();
+    void destroy_scene();
 
     string name() { return "Rope Simulator"; }
     string info()

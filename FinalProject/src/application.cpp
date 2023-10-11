@@ -6,35 +6,18 @@
 
 #include "application.h"
 
-Application::~Application()
-{
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
-    delete ropeEuler;
-    delete ropeVerlet;
-}
-
 void Application::init()
 {
-    // Enable anti-aliasing and circular points
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_POLYGON_SMOOTH);
     glEnable(GL_POINT_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
     glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
-
     glPointSize(8);
     glLineWidth(4);
     glColor3f(1.0, 1.0, 1.0);
 
-    // Create two ropes
-    ropeEuler = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass, config.ks, {0});
-    ropeVerlet = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass, config.ks, {0});
-
-    // Initialize ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
@@ -42,6 +25,28 @@ void Application::init()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     ImGui_ImplGlfw_InitForOpenGL(viewer->get_window(), true); // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
     ImGui_ImplOpenGL3_Init();
+
+    create_scene();
+}
+
+Application::~Application()
+{
+    destroy_scene();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void Application::create_scene()
+{
+    ropeEuler = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass, config.ks, {0});
+    ropeVerlet = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass, config.ks, {0});
+}
+
+void Application::destroy_scene()
+{
+    delete ropeEuler;
+    delete ropeVerlet;
 }
 
 void Application::render()
@@ -54,21 +59,21 @@ void Application::render()
     {
         ImGui::Begin("Config");
 
-        ImGui::SliderFloat("mass", &config.mass, 0, 10);
+        ImGui::SliderFloat("mass (needs restart)", &config.mass, 0, 10);
         ImGui::SameLine();
-        if (ImGui::Button("Reset##1"))
+        if (ImGui::Button("Reset##mass"))
             config.mass = DEFAULT_MASS;
 
-        ImGui::SliderFloat("ks", &config.ks, 0, 1000);
+        ImGui::SliderFloat("ks (needs restart)", &config.ks, 0, 1000);
         ImGui::SameLine();
-        if (ImGui::Button("Reset##2"))
+        if (ImGui::Button("Reset##ks"))
             config.ks = DEFAULT_KS;
 
         static float gravity = 1;
         ImGui::SliderFloat("gravity", &gravity, -10, 10);
         config.gravity = gravity * DEFAULT_GRAVITY;
         ImGui::SameLine();
-        if (ImGui::Button("Reset##3"))
+        if (ImGui::Button("Reset##gravity"))
         {
             gravity = 1;
             config.gravity = DEFAULT_GRAVITY;
@@ -78,20 +83,41 @@ void Application::render()
         ImGui::SliderInt("steps_per_frame", &steps_per_frame, 0, 1000);
         config.steps_per_frame = (float)steps_per_frame;
         ImGui::SameLine();
-        if (ImGui::Button("Reset##4"))
+        if (ImGui::Button("Reset##steps_per_frame"))
         {
             steps_per_frame = (int)DEFAULT_STEPS_PER_FRAME;
             config.steps_per_frame = DEFAULT_STEPS_PER_FRAME;
+        }
+
+        if (ImGui::Button(("Switch to " + string(config.realtime ? "simulation" : "realtime") + " mode").c_str()))
+            config.realtime = !config.realtime;
+
+        if (ImGui::Button("Restart simulation"))
+        {
+            destroy_scene();
+            create_scene();
         }
 
         ImGui::End();
     }
 
     // Simulation loop
-    for (int i = 0; i < config.steps_per_frame; i++)
+    if (config.realtime)
     {
-        ropeEuler->simulateEuler(1 / config.steps_per_frame, config.gravity);
-        ropeVerlet->simulateVerlet(1 / config.steps_per_frame, config.gravity);
+        static auto t_old = chrono::high_resolution_clock::now();
+        auto t_now = chrono::high_resolution_clock::now();
+        float t_elapsed = chrono::duration<float>(t_now - t_old).count();
+        t_old = t_now;
+        ropeEuler->simulateEuler(t_elapsed, config.gravity);
+        ropeVerlet->simulateVerlet(t_elapsed, config.gravity);
+    }
+    else
+    {
+        for (int i = 0; i < config.steps_per_frame; i++)
+        {
+            ropeEuler->simulateEuler(1 / config.steps_per_frame, config.gravity);
+            ropeVerlet->simulateVerlet(1 / config.steps_per_frame, config.gravity);
+        }
     }
 
     // Render ropes
