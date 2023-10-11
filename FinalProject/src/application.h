@@ -12,24 +12,29 @@
 
 #include "mass.h"
 
+static const float DEFAULT_MASS = 1;
+static const float DEFAULT_KS = 100;
+static const Vector2D DEFAULT_GRAVITY =  Vector2D(0, -10);
+static const float DEFAULT_STEPS_PER_FRAME = 64;
+
 struct AppConfig
 {
     AppConfig()
     {
         // Rope config variables
-        mass = 1;
-        ks = 100;
+        mass = DEFAULT_MASS;
+        ks = DEFAULT_KS;
 
         // Environment variables
-        gravity = Vector2D(0, -1);
-        steps_per_frame = 64;
+        gravity = DEFAULT_GRAVITY;
+        steps_per_frame = DEFAULT_STEPS_PER_FRAME;
     }
 
     float mass;
     float ks;
 
-    float steps_per_frame;
     Vector2D gravity;
+    float steps_per_frame;
 };
 
 class Application : public Renderer
@@ -46,11 +51,11 @@ public:
     string info()
     {
         const static string prompt = "FPS: ";
-        static auto t_old = std::chrono::high_resolution_clock::now();
-        auto t_now = std::chrono::high_resolution_clock::now();
-        double t_elapsed = std::chrono::duration<double, std::milli>(t_now - t_old).count();
+        static auto t_old = chrono::high_resolution_clock::now();
+        auto t_now = chrono::high_resolution_clock::now();
+        double t_elapsed = chrono::duration<double>(t_now - t_old).count();
         t_old = t_now;
-        int fps = int(1000 / t_elapsed);
+        int fps = int(1 / t_elapsed);
         return prompt + to_string(fps);
     }
 
@@ -58,11 +63,11 @@ private:
     const Viewer *viewer;
     AppConfig config;
 
-    Rope *ropeEuler;
-    Rope *ropeVerlet;
-
     size_t screen_width;
     size_t screen_height;
+
+    Rope *ropeEuler;
+    Rope *ropeVerlet;
 };
 
 #endif // APPLICATION_H

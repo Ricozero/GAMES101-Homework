@@ -8,7 +8,7 @@ int main(int argc, char **argv)
 {
     AppConfig config;
     Viewer viewer;
-    // Application is deleted in ~Viewer
+    // Application is deleted in ~Viewer, so it has to be a heap object
     Application *app = new Application(config, &viewer);
 
     viewer.set_renderer(app);

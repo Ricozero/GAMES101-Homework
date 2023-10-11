@@ -34,6 +34,7 @@ void Application::init()
     ropeEuler = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass, config.ks, {0});
     ropeVerlet = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass, config.ks, {0});
 
+    // Initialize ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
@@ -45,55 +46,55 @@ void Application::init()
 
 void Application::render()
 {
+    // Render config window
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGui::SetNextWindowSize({-1, -1});
-
     {
         ImGui::Begin("Config");
 
         ImGui::SliderFloat("mass", &config.mass, 0, 10);
         ImGui::SameLine();
         if (ImGui::Button("Reset##1"))
-            config.mass = 1;
+            config.mass = DEFAULT_MASS;
 
         ImGui::SliderFloat("ks", &config.ks, 0, 1000);
         ImGui::SameLine();
         if (ImGui::Button("Reset##2"))
-            config.ks = 100;
+            config.ks = DEFAULT_KS;
 
         static float gravity = 1;
         ImGui::SliderFloat("gravity", &gravity, -10, 10);
-        config.gravity = gravity * Vector2D(0, -1);
+        config.gravity = gravity * DEFAULT_GRAVITY;
         ImGui::SameLine();
         if (ImGui::Button("Reset##3"))
         {
             gravity = 1;
-            config.gravity = Vector2D(0, -1);
+            config.gravity = DEFAULT_GRAVITY;
         }
 
-        static int steps_per_frame = 64;
+        static int steps_per_frame = (int)DEFAULT_STEPS_PER_FRAME;
         ImGui::SliderInt("steps_per_frame", &steps_per_frame, 0, 1000);
         config.steps_per_frame = (float)steps_per_frame;
         ImGui::SameLine();
         if (ImGui::Button("Reset##4"))
         {
-            steps_per_frame = 64;
-            config.steps_per_frame = (float)64;
+            steps_per_frame = (int)DEFAULT_STEPS_PER_FRAME;
+            config.steps_per_frame = DEFAULT_STEPS_PER_FRAME;
         }
 
         ImGui::End();
     }
 
-    // Simulation loops
+    // Simulation loop
     for (int i = 0; i < config.steps_per_frame; i++)
     {
         ropeEuler->simulateEuler(1 / config.steps_per_frame, config.gravity);
         ropeVerlet->simulateVerlet(1 / config.steps_per_frame, config.gravity);
     }
 
-    // Rendering ropes
+    // Render ropes
     Rope *rope;
     for (int i = 0; i < 2; i++)
     {
