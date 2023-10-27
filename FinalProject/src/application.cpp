@@ -39,14 +39,17 @@ Application::~Application()
 
 void Application::create_scene()
 {
-    ropeEuler = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass, config.ks, {0});
-    ropeVerlet = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 3, config.mass, config.ks, {0});
+    // object_euler = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 5, config.mass, config.ks, {0, 4});
+    // object_verlet = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 5, config.mass, config.ks, {0, 4});
+    int num_rows = 20, num_cols = 20;
+    object_euler = new Net(Vector2D(-200, -200), Vector2D(200, 200), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
+    object_verlet = new Net(Vector2D(-200, -200), Vector2D(200, 200), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
 }
 
 void Application::destroy_scene()
 {
-    delete ropeEuler;
-    delete ropeVerlet;
+    delete object_euler;
+    delete object_verlet;
 }
 
 void Application::render()
@@ -108,35 +111,35 @@ void Application::render()
         auto t_now = chrono::high_resolution_clock::now();
         float t_elapsed = chrono::duration<float>(t_now - t_old).count();
         t_old = t_now;
-        ropeEuler->simulateEuler(t_elapsed, config.gravity);
-        ropeVerlet->simulateVerlet(t_elapsed, config.gravity);
+        object_euler->SimulateEuler(t_elapsed, config.gravity);
+        object_verlet->SimulateVerlet(t_elapsed, config.gravity);
     }
     else
     {
         for (int i = 0; i < config.steps_per_frame; i++)
         {
-            ropeEuler->simulateEuler(1 / config.steps_per_frame, config.gravity);
-            ropeVerlet->simulateVerlet(1 / config.steps_per_frame, config.gravity);
+            object_euler->SimulateEuler(1 / config.steps_per_frame, config.gravity);
+            object_verlet->SimulateVerlet(1 / config.steps_per_frame, config.gravity);
         }
     }
 
     // Render ropes
-    Rope *rope;
+    const Object *object;
     for (int i = 0; i < 2; i++)
     {
         if (i == 0)
         {
             glColor3f(0.0, 0.0, 1.0);
-            rope = ropeEuler;
+            object = object_euler;
         }
         else
         {
             glColor3f(0.0, 1.0, 0.0);
-            rope = ropeVerlet;
+            object = object_verlet;
         }
 
         glBegin(GL_POINTS);
-        for (auto &m : rope->masses)
+        for (auto &m : object->masses)
         {
             Vector2D p = m->position;
             glVertex2d(p.x, p.y);
@@ -144,7 +147,7 @@ void Application::render()
         glEnd();
 
         glBegin(GL_LINES);
-        for (auto &s : rope->springs)
+        for (auto &s : object->springs)
         {
             Vector2D p1 = s->m1->position;
             Vector2D p2 = s->m2->position;

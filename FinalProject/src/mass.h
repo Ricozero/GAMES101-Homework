@@ -27,37 +27,23 @@ struct Mass
 
 struct Spring
 {
-    Spring(Mass *a, Mass *b, float k): m1(a), m2(b), k(k), rest_length((a->position - b->position).norm()) {}
+    Spring(Mass *a, Mass *b, float ks): m1(a), m2(b), ks(ks), rest_length((a->position - b->position).norm()) {}
 
-    float k;
+    float ks;
     double rest_length;
 
     Mass *m1;
     Mass *m2;
 };
 
-class Rope
+class Object
 {
 public:
-    Rope(vector<Mass *> &masses, vector<Spring *> &springs): masses(masses), springs(springs) {}
-    Rope(Vector2D start, Vector2D end, int num_nodes, float node_mass, float k, vector<int> pinned_nodes)
-    {
-        // Create a rope starting at `start`, ending at `end`, and containing `num_nodes` nodes
-        masses.push_back(new Mass(start, node_mass, false));
-        Vector2D cur_position = start, step = (end - start) / (num_nodes - 1);
-        for (int i = 1; i < num_nodes; ++i)
-        {
-            cur_position += step;
-            masses.push_back(new Mass(cur_position, node_mass, false));
-            springs.push_back(new Spring(masses[i - 1], masses[i], k));
-        }
+    vector<Mass *> masses;
+    vector<Spring *> springs;
 
-        for (auto &i : pinned_nodes)
-        {
-            masses[i]->pinned = true;
-        }
-    }
-    ~Rope()
+    Object() {}
+    virtual ~Object()
     {
         for (auto mass: masses)
             delete mass;
@@ -65,13 +51,13 @@ public:
             delete spring;
     }
 
-    void simulateVerlet(float delta_t, Vector2D gravity)
+    virtual void SimulateVerlet(float delta_t, Vector2D gravity)
     {
         for (auto &s : springs)
         {
             // Simulate one timestep of the rope using explicit Verlet（solving constraints)
             double distance = (s->m1->position - s->m2->position).norm();
-            Vector2D force = -s->k * (s->m1->position - s->m2->position) / distance * (distance - s->rest_length);
+            Vector2D force = -s->ks * (s->m1->position - s->m2->position) / distance * (distance - s->rest_length);
             s->m1->forces += force;
             s->m2->forces += -force;
         }
@@ -89,14 +75,14 @@ public:
             m->forces = Vector2D(0, 0);
         }
     }
-    
-    void simulateEuler(float delta_t, Vector2D gravity)
+
+    virtual void SimulateEuler(float delta_t, Vector2D gravity)
     {
         for (auto &s : springs)
         {
             // Use Hooke's law to calculate the force on a node
             double distance = (s->m1->position - s->m2->position).norm();
-            Vector2D force = -s->k * (s->m1->position - s->m2->position) / distance * (distance - s->rest_length);
+            Vector2D force = -s->ks * (s->m1->position - s->m2->position) / distance * (distance - s->rest_length);
             s->m1->forces += force;
             s->m2->forces += -force;
         }
@@ -114,9 +100,59 @@ public:
             m->forces = Vector2D(0, 0);
         }
     }
+};
 
-    vector<Mass *> masses;
-    vector<Spring *> springs;
+class Rope : public Object
+{
+public:
+    Rope(Vector2D start, Vector2D end, int num_nodes, float node_mass, float ks, vector<int> pinned_nodes)
+    {
+        // Create a rope starting at `start`, ending at `end`, and containing `num_nodes` nodes
+        masses.push_back(new Mass(start, node_mass, false));
+        Vector2D cur_position = start, step = (end - start) / (num_nodes - 1);
+        for (int i = 1; i < num_nodes; ++i)
+        {
+            cur_position += step;
+            masses.push_back(new Mass(cur_position, node_mass, false));
+            springs.push_back(new Spring(masses[i - 1], masses[i], ks));
+        }
+
+        for (auto &i : pinned_nodes)
+        {
+            masses[i]->pinned = true;
+        }
+    }
+};
+
+class Net : public Object
+{
+public:
+    Net(Vector2D min_point, Vector2D max_point, int num_rows, int num_cols, float node_mass, float ks, vector<pair<int, int>> pinned_nodes)
+    {
+        double grid_x = (max_point.x - min_point.x) / num_cols;
+        double grid_y = (max_point.y - min_point.y) / num_rows;
+        for (int i = 0; i <= num_rows; ++i)
+            for (int j = 0; j <= num_cols; ++j)
+                masses.push_back(new Mass(min_point + Vector2D(j * grid_x, i * grid_y), node_mass, false));
+        for (auto x : pinned_nodes)
+            masses[x.first * (num_cols + 1) + x.second]->pinned = true;
+        // Horizontal
+        for (int i = 0; i <= num_rows; ++i)
+            for (int j = 0; j < num_cols; ++j)
+                springs.push_back(new Spring(masses[i * (num_cols + 1) + j], masses[i * (num_cols + 1) + j + 1], ks));
+        // Vertical
+        for (int i = 0; i < num_rows; ++i)
+            for (int j = 0; j <= num_cols; ++j)
+                springs.push_back(new Spring(masses[i * (num_cols + 1) + j], masses[(i + 1) * (num_cols + 1) + j], ks));
+        // Diagonal
+        for (int i = 0; i < num_rows; ++i)
+            for (int j = num_cols; j > 0; --j)
+                springs.push_back(new Spring(masses[i * (num_cols + 1) + j], masses[(i + 1) * (num_cols + 1) + j - 1], 0.1f));
+        // Antidiagonal
+        for (int i = 0; i < num_rows; ++i)
+            for (int j = 0; j < num_cols; ++j)
+                springs.push_back(new Spring(masses[i * (num_cols + 1) + j], masses[(i + 1) * (num_cols + 1) + j + 1], 0.1f));
+    }
 };
 
 #endif /* MASS_H */

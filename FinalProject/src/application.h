@@ -71,8 +71,8 @@ private:
     size_t screen_width;
     size_t screen_height;
 
-    Rope *ropeEuler;
-    Rope *ropeVerlet;
+    Object *object_euler;
+    Object *object_verlet;
 };
 
 #endif // APPLICATION_H
