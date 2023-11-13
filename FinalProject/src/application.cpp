@@ -52,8 +52,67 @@ void Application::destroy_scene()
     delete object_verlet;
 }
 
+void Application::update()
+{
+    if (config.realtime)
+    {
+        static auto t_old = chrono::high_resolution_clock::now();
+        auto t_now = chrono::high_resolution_clock::now();
+        float t_elapsed = chrono::duration<float>(t_now - t_old).count();
+        t_old = t_now;
+        object_euler->SimulateEuler(t_elapsed, config.gravity);
+        object_verlet->SimulateVerlet(t_elapsed, config.gravity);
+    }
+    else
+    {
+        for (int i = 0; i < config.steps_per_frame; i++)
+        {
+            object_euler->SimulateEuler(1 / config.steps_per_frame, config.gravity);
+            object_verlet->SimulateVerlet(1 / config.steps_per_frame, config.gravity);
+        }
+    }
+}
+
 void Application::render()
 {
+    update();
+
+    // Render ropes
+    const Object *object;
+    for (int i = 0; i < 2; i++)
+    {
+        if (i == 0)
+        {
+            glColor3f(0.0, 0.0, 1.0);
+            object = object_euler;
+        }
+        else
+        {
+            glColor3f(0.0, 1.0, 0.0);
+            object = object_verlet;
+        }
+
+        glBegin(GL_POINTS);
+        for (auto &m : object->masses)
+        {
+            Vector2D p = m->position;
+            glVertex2d(p.x, p.y);
+        }
+        glEnd();
+
+        glBegin(GL_LINES);
+        for (auto &s : object->springs)
+        {
+            Vector2D p1 = s->m1->position;
+            Vector2D p2 = s->m2->position;
+            glVertex2d(p1.x, p1.y);
+            glVertex2d(p2.x, p2.y);
+        }
+        glEnd();
+
+        glFlush();
+    }
+
     // Render config window
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -103,62 +162,6 @@ void Application::render()
 
         ImGui::End();
     }
-
-    // Simulation loop
-    if (config.realtime)
-    {
-        static auto t_old = chrono::high_resolution_clock::now();
-        auto t_now = chrono::high_resolution_clock::now();
-        float t_elapsed = chrono::duration<float>(t_now - t_old).count();
-        t_old = t_now;
-        object_euler->SimulateEuler(t_elapsed, config.gravity);
-        object_verlet->SimulateVerlet(t_elapsed, config.gravity);
-    }
-    else
-    {
-        for (int i = 0; i < config.steps_per_frame; i++)
-        {
-            object_euler->SimulateEuler(1 / config.steps_per_frame, config.gravity);
-            object_verlet->SimulateVerlet(1 / config.steps_per_frame, config.gravity);
-        }
-    }
-
-    // Render ropes
-    const Object *object;
-    for (int i = 0; i < 2; i++)
-    {
-        if (i == 0)
-        {
-            glColor3f(0.0, 0.0, 1.0);
-            object = object_euler;
-        }
-        else
-        {
-            glColor3f(0.0, 1.0, 0.0);
-            object = object_verlet;
-        }
-
-        glBegin(GL_POINTS);
-        for (auto &m : object->masses)
-        {
-            Vector2D p = m->position;
-            glVertex2d(p.x, p.y);
-        }
-        glEnd();
-
-        glBegin(GL_LINES);
-        for (auto &s : object->springs)
-        {
-            Vector2D p1 = s->m1->position;
-            Vector2D p2 = s->m2->position;
-            glVertex2d(p1.x, p1.y);
-            glVertex2d(p2.x, p2.y);
-        }
-        glEnd();
-
-        glFlush();
-    }
-    
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

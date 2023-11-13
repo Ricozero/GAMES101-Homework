@@ -14,12 +14,12 @@
 
 static const float DEFAULT_MASS = 1;
 static const float DEFAULT_KS = 100;
-static const Vector2D DEFAULT_GRAVITY =  Vector2D(0, -1);
+static const Vector2D DEFAULT_GRAVITY = Vector2D(0, -1);
 static const float DEFAULT_STEPS_PER_FRAME = 64;
 
-struct AppConfig
+struct Config
 {
-    AppConfig()
+    Config()
     {
         // Rope config variables
         mass = DEFAULT_MASS;
@@ -42,15 +42,15 @@ struct AppConfig
 class Application : public Renderer
 {
 public:
-    Application(AppConfig config, Viewer *viewer): config(config), viewer(viewer) {}
+    Application(Config config, Viewer *viewer): config(config), viewer(viewer) {}
     ~Application();
 
     void init();
-    void render();
-    void resize(size_t w, size_t h);
-
     void create_scene();
     void destroy_scene();
+    void update();
+    void render();
+    void resize(size_t w, size_t h);
 
     string name() { return "Rope Simulator"; }
     string info()
@@ -66,7 +66,7 @@ public:
 
 private:
     const Viewer *viewer;
-    AppConfig config;
+    Config config;
 
     size_t screen_width;
     size_t screen_height;
