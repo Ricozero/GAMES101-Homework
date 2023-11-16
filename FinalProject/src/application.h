@@ -7,36 +7,39 @@
 #include <string>
 #include <vector>
 
-#include "CGL/vector2D.h"
+#include "CGL/vector3D.h"
 #include "CGL/renderer.h"
 
 #include "mass.h"
 
 static const float DEFAULT_MASS = 1;
 static const float DEFAULT_KS = 100;
-static const Vector2D DEFAULT_GRAVITY = Vector2D(0, -1);
+static const Vector3D DEFAULT_GRAVITY = Vector3D(0, -1, 0);
 static const float DEFAULT_STEPS_PER_FRAME = 64;
 
 struct Config
 {
     Config()
     {
-        // Rope config variables
         mass = DEFAULT_MASS;
         ks = DEFAULT_KS;
-
-        // Environment variables
         gravity = DEFAULT_GRAVITY;
         steps_per_frame = DEFAULT_STEPS_PER_FRAME;
         realtime = false;
+        wireframe = false;
     }
 
+    // Rope config variables
     float mass;
     float ks;
 
-    Vector2D gravity;
+    // Environment variables
+    Vector3D gravity;
     float steps_per_frame;
     bool realtime;
+
+    // Rendering variables
+    bool wireframe;
 };
 
 class Application : public Renderer
@@ -71,8 +74,16 @@ private:
     size_t screen_width;
     size_t screen_height;
 
-    Object *object_euler;
-    Object *object_verlet;
+    Net *net_euler;
+    Net *net_verlet;
+    unsigned int vao_euler;
+    unsigned int vao_verlet;
+    unsigned int vbo_euler;
+    unsigned int vbo_verlet;
+    unsigned int ebo_euler;
+    unsigned int ebo_verlet;
+    unsigned int shader_program_euler;
+    unsigned int shader_program_verlet;
 };
 
 #endif // APPLICATION_H

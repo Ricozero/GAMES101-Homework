@@ -6,8 +6,13 @@
 
 #include "application.h"
 
+#define USE_2D
+
 void Application::init()
 {
+    create_scene();
+
+#ifdef USE_2D
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_POLYGON_SMOOTH);
     glEnable(GL_POINT_SMOOTH);
@@ -17,6 +22,79 @@ void Application::init()
     glPointSize(8);
     glLineWidth(4);
     glColor3f(1.0, 1.0, 1.0);
+#else
+    glGenVertexArrays(1, &vao_euler);
+    glGenVertexArrays(1, &vao_verlet);
+    glGenBuffers(1, &vbo_euler);
+    glGenBuffers(1, &vbo_verlet);
+    glGenBuffers(1, &ebo_euler);
+    glGenBuffers(1, &ebo_verlet);
+
+    int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    const char *vertex_shader_source = R"delimiter(
+        #version 330 core
+        layout (location = 0) in vec3 aPos;
+
+        void main()
+        {
+            gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+        }
+    )delimiter";
+    glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
+    glCompileShader(vertex_shader);
+
+    int fragment_shader_euler = glCreateShader(GL_FRAGMENT_SHADER);
+    const char *fragment_shader_source_euler = R"delimiter(
+        #version 330 core
+        out vec4 FragColor;
+
+        void main()
+        {
+            FragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+        }
+    )delimiter";
+    glShaderSource(fragment_shader_euler, 1, &fragment_shader_source_euler, NULL);
+    glCompileShader(fragment_shader_euler);
+    shader_program_euler = glCreateProgram();
+    glAttachShader(shader_program_euler, vertex_shader);
+    glAttachShader(shader_program_euler, fragment_shader_euler);
+    glLinkProgram(shader_program_euler);
+    glDeleteShader(fragment_shader_euler);
+
+    int fragment_shader_verlet = glCreateShader(GL_FRAGMENT_SHADER);
+    const char *fragment_shader_source_verlet = R"delimiter(
+        #version 330 core
+        out vec4 FragColor;
+
+        void main()
+        {
+            FragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+        }
+    )delimiter";
+    glShaderSource(fragment_shader_verlet, 1, &fragment_shader_source_verlet, NULL);
+    glCompileShader(fragment_shader_verlet);
+    shader_program_verlet = glCreateProgram();
+    glAttachShader(shader_program_verlet, vertex_shader);
+    glAttachShader(shader_program_verlet, fragment_shader_verlet);
+    glLinkProgram(shader_program_verlet);
+    glDeleteShader(fragment_shader_verlet);
+
+    glDeleteShader(vertex_shader);
+
+    glBindVertexArray(vao_euler);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_euler);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_euler);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, net_euler->mesh.size() * sizeof(int), net_euler->mesh.data(), GL_STATIC_DRAW);
+    // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    // glEnableVertexAttribArray(0);
+
+    glBindVertexArray(vao_verlet);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_verlet);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_verlet);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, net_verlet->mesh.size() * sizeof(int), net_verlet->mesh.data(), GL_STATIC_DRAW);
+    // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    // glEnableVertexAttribArray(0);
+#endif
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -25,8 +103,6 @@ void Application::init()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     ImGui_ImplGlfw_InitForOpenGL(viewer->get_window(), true); // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
     ImGui_ImplOpenGL3_Init();
-
-    create_scene();
 }
 
 Application::~Application()
@@ -39,17 +115,20 @@ Application::~Application()
 
 void Application::create_scene()
 {
-    // object_euler = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 5, config.mass, config.ks, {0, 4});
-    // object_verlet = new Rope(Vector2D(0, 200), Vector2D(-400, 200), 5, config.mass, config.ks, {0, 4});
     int num_rows = 20, num_cols = 20;
-    object_euler = new Net(Vector2D(-200, -200), Vector2D(200, 200), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
-    object_verlet = new Net(Vector2D(-200, -200), Vector2D(200, 200), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
+#ifdef USE_2D
+    net_euler = new Net(Vector3D(-200, -200, -1), Vector3D(200, 200, -1), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
+    net_verlet = new Net(Vector3D(-200, -200, -1), Vector3D(200, 200, -1), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
+#else
+    net_euler = new Net(Vector3D(-0.5, -0.5, 0), Vector3D(0.5, 0.5, 0), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
+    net_verlet = new Net(Vector3D(-0.5, -0.5, 0), Vector3D(0.5, 0.5, 0), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
+#endif
 }
 
 void Application::destroy_scene()
 {
-    delete object_euler;
-    delete object_verlet;
+    delete net_euler;
+    delete net_verlet;
 }
 
 void Application::update()
@@ -60,15 +139,15 @@ void Application::update()
         auto t_now = chrono::high_resolution_clock::now();
         float t_elapsed = chrono::duration<float>(t_now - t_old).count();
         t_old = t_now;
-        object_euler->SimulateEuler(t_elapsed, config.gravity);
-        object_verlet->SimulateVerlet(t_elapsed, config.gravity);
+        net_euler->SimulateEuler(t_elapsed, config.gravity);
+        net_verlet->SimulateVerlet(t_elapsed, config.gravity);
     }
     else
     {
         for (int i = 0; i < config.steps_per_frame; i++)
         {
-            object_euler->SimulateEuler(1 / config.steps_per_frame, config.gravity);
-            object_verlet->SimulateVerlet(1 / config.steps_per_frame, config.gravity);
+            net_euler->SimulateEuler(1 / config.steps_per_frame, config.gravity);
+            net_verlet->SimulateVerlet(1 / config.steps_per_frame, config.gravity);
         }
     }
 }
@@ -78,24 +157,25 @@ void Application::render()
     update();
 
     // Render ropes
-    const Object *object;
+#ifdef USE_2D
+    const Net *object;
     for (int i = 0; i < 2; i++)
     {
         if (i == 0)
         {
             glColor3f(0.0, 0.0, 1.0);
-            object = object_euler;
+            object = net_euler;
         }
         else
         {
             glColor3f(0.0, 1.0, 0.0);
-            object = object_verlet;
+            object = net_verlet;
         }
 
         glBegin(GL_POINTS);
-        for (auto &m : object->masses)
+        for (auto &v : object->vertices)
         {
-            Vector2D p = m->position;
+            Vector3D p = v->position;
             glVertex2d(p.x, p.y);
         }
         glEnd();
@@ -103,8 +183,8 @@ void Application::render()
         glBegin(GL_LINES);
         for (auto &s : object->springs)
         {
-            Vector2D p1 = s->m1->position;
-            Vector2D p2 = s->m2->position;
+            Vector3D p1 = s->v1->position;
+            Vector3D p2 = s->v2->position;
             glVertex2d(p1.x, p1.y);
             glVertex2d(p2.x, p2.y);
         }
@@ -112,6 +192,30 @@ void Application::render()
 
         glFlush();
     }
+#else
+    if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    size_t size_v = max(net_euler->vertices.size(), net_verlet->vertices.size());
+    auto vertices = new float[size_v][3];
+
+    for (int i = 0; i < net_euler->vertices.size(); ++i)
+    {
+        vertices[i][0] = (float)net_euler->vertices[i]->position.x;
+        vertices[i][1] = (float)net_euler->vertices[i]->position.y;
+        vertices[i][2] = (float)net_euler->vertices[i]->position.z;
+    }
+    glUseProgram(shader_program_euler);
+    glBindVertexArray(vao_euler);
+    glBufferData(GL_ARRAY_BUFFER, net_euler->vertices.size() * 3 * sizeof(float), vertices, GL_STREAM_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glDrawElements(GL_TRIANGLES, (GLsizei)net_euler->mesh.size(), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+
+    delete[] vertices;
+    if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+#endif
 
     // Render config window
     ImGui_ImplOpenGL3_NewFrame();
@@ -154,11 +258,16 @@ void Application::render()
         if (ImGui::Button(("Switch to " + string(config.realtime ? "simulation" : "realtime") + " mode").c_str()))
             config.realtime = !config.realtime;
 
+        ImGui::SameLine();
         if (ImGui::Button("Restart simulation"))
         {
             destroy_scene();
             create_scene();
         }
+
+        ImGui::SameLine();
+        if (ImGui::Button(("Switch to " + string(config.wireframe ? "normal" : "wireframe") + " mode").c_str()))
+            config.wireframe = !config.wireframe;
 
         ImGui::End();
     }
