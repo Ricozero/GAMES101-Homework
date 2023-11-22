@@ -13,16 +13,22 @@
 #include "mass.h"
 
 static const float DEFAULT_MASS = 1;
-static const float DEFAULT_KS = 100;
+static const float DEFAULT_K1 = 100;
+static const float DEFAULT_K2 = 0.1f;
+static const float DEFAULT_K3 = 0.1f;
+static const float DEFAULT_DAMPING = 0.05f;
 static const Vector3D DEFAULT_GRAVITY = Vector3D(0, -1, 0);
-static const float DEFAULT_STEPS_PER_FRAME = 64;
+static const int DEFAULT_STEPS_PER_FRAME = 64;
 
 struct Config
 {
     Config()
     {
         mass = DEFAULT_MASS;
-        ks = DEFAULT_KS;
+        k1 = DEFAULT_K1;
+        k2 = DEFAULT_K2;
+        k3 = DEFAULT_K3;
+        damping = DEFAULT_DAMPING;
         gravity = DEFAULT_GRAVITY;
         steps_per_frame = DEFAULT_STEPS_PER_FRAME;
         realtime = false;
@@ -31,11 +37,14 @@ struct Config
 
     // Rope config variables
     float mass;
-    float ks;
+    float k1;
+    float k2;
+    float k3;
+    float damping;
 
     // Environment variables
     Vector3D gravity;
-    float steps_per_frame;
+    int steps_per_frame;
     bool realtime;
 
     // Rendering variables
@@ -52,6 +61,8 @@ public:
     void create_scene();
     void destroy_scene();
     void update();
+    void render_ropes();
+    void render_config_window();
     void render();
     void resize(size_t w, size_t h);
 

@@ -39,7 +39,7 @@ void Application::init()
         uniform int screenHeight;
 
         float aspectRatio = float(screenWidth) / screenHeight;
-        float t = 300, b = -t, r = t * aspectRatio, l = -r, n = 1, f = -2;
+        float t = 300, b = -t, r = t * aspectRatio, l = -r, n = 2, f = -2;
         mat4 orth = mat4(
             2/(r-l), 0, 0, -(r+l)/(r-l),
             0, 2/(t-b), 0, -(t+b)/(t-b),
@@ -137,8 +137,8 @@ Application::~Application()
 void Application::create_scene()
 {
     int num_rows = 20, num_cols = 20;
-    net_euler = new Net(Vector3D(-200, -200, -1), Vector3D(200, 200, -1), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
-    net_verlet = new Net(Vector3D(-200, -200, -1), Vector3D(200, 200, -1), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
+    net_euler = new Net(Vector3D(-200, -200, 0), Vector3D(200, 200, 0), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
+    net_verlet = new Net(Vector3D(-200, -200, 0), Vector3D(200, 200, 0), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
 }
 
 void Application::destroy_scene()
@@ -155,24 +155,21 @@ void Application::update()
         auto t_now = chrono::high_resolution_clock::now();
         float t_elapsed = chrono::duration<float>(t_now - t_old).count();
         t_old = t_now;
-        net_euler->SimulateEuler(t_elapsed, config.gravity);
-        net_verlet->SimulateVerlet(t_elapsed, config.gravity);
+        net_euler->SimulateEuler(t_elapsed, config.gravity, config.damping);
+        net_verlet->SimulateVerlet(t_elapsed, config.gravity, config.damping);
     }
     else
     {
         for (int i = 0; i < config.steps_per_frame; i++)
         {
-            net_euler->SimulateEuler(1 / config.steps_per_frame, config.gravity);
-            net_verlet->SimulateVerlet(1 / config.steps_per_frame, config.gravity);
+            net_euler->SimulateEuler(1 / (float)config.steps_per_frame, config.gravity, config.damping);
+            net_verlet->SimulateVerlet(1 / (float)config.steps_per_frame, config.gravity, config.damping);
         }
     }
 }
 
-void Application::render()
+void Application::render_ropes()
 {
-    update();
-
-    // Render ropes
 #ifdef USE_2D
     const Net *object;
     for (int i = 0; i < 2; i++)
@@ -245,8 +242,10 @@ void Application::render()
     delete[] vertices;
     if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 #endif
+}
 
-    // Render config window
+void Application::render_config_window()
+{
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -259,10 +258,23 @@ void Application::render()
         if (ImGui::Button("Reset##mass"))
             config.mass = DEFAULT_MASS;
 
-        ImGui::SliderFloat("ks (needs restart)", &config.ks, 0, 1000);
+        ImGui::SliderFloat("k1 (needs restart)", &config.k1, 0, 1000);
         ImGui::SameLine();
-        if (ImGui::Button("Reset##ks"))
-            config.ks = DEFAULT_KS;
+        if (ImGui::Button("Reset##k1"))
+            config.k1 = DEFAULT_K1;
+        ImGui::SliderFloat("k2 (needs restart)", &config.k2, 0, 10);
+        ImGui::SameLine();
+        if (ImGui::Button("Reset##k2"))
+            config.k2 = DEFAULT_K2;
+        ImGui::SliderFloat("k3 (needs restart)", &config.k3, 0, 10);
+        ImGui::SameLine();
+        if (ImGui::Button("Reset##k3"))
+            config.k3 = DEFAULT_K3;
+
+        ImGui::SliderFloat("damping", &config.damping, 0, 1);
+        ImGui::SameLine();
+        if (ImGui::Button("Reset##damping"))
+            config.damping = DEFAULT_DAMPING;
 
         static float gravity = 1;
         ImGui::SliderFloat("gravity", &gravity, -10, 10);
@@ -274,15 +286,10 @@ void Application::render()
             config.gravity = DEFAULT_GRAVITY;
         }
 
-        static int steps_per_frame = (int)DEFAULT_STEPS_PER_FRAME;
-        ImGui::SliderInt("steps_per_frame", &steps_per_frame, 0, 1000);
-        config.steps_per_frame = (float)steps_per_frame;
+        ImGui::SliderInt("steps_per_frame", &config.steps_per_frame, 0, 1000);
         ImGui::SameLine();
         if (ImGui::Button("Reset##steps_per_frame"))
-        {
-            steps_per_frame = (int)DEFAULT_STEPS_PER_FRAME;
             config.steps_per_frame = DEFAULT_STEPS_PER_FRAME;
-        }
 
         if (ImGui::Button(("Switch to " + string(config.realtime ? "simulation" : "realtime") + " mode").c_str()))
             config.realtime = !config.realtime;
@@ -294,14 +301,23 @@ void Application::render()
             create_scene();
         }
 
+#ifndef USE_2D
         ImGui::SameLine();
         if (ImGui::Button(("Switch to " + string(config.wireframe ? "normal" : "wireframe") + " mode").c_str()))
             config.wireframe = !config.wireframe;
+#endif
 
         ImGui::End();
     }
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void Application::render()
+{
+    update();
+    render_ropes();
+    render_config_window();
 }
 
 void Application::resize(size_t w, size_t h)

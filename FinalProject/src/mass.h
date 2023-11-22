@@ -30,9 +30,9 @@ struct Vertex
 
 struct Spring
 {
-    Spring(Vertex *a, Vertex *b, float ks) : v1(a), v2(b), ks(ks), rest_length((a->position - b->position).norm()) {}
+    Spring(Vertex *a, Vertex *b, float k) : v1(a), v2(b), k(k), rest_length((a->position - b->position).norm()) {}
 
-    float ks;
+    float k;
     double rest_length;
 
     Vertex *v1;
@@ -46,32 +46,42 @@ public:
     vector<Spring *> springs;
     vector<unsigned int> mesh;
 
-    Net(Vector3D min_point, Vector3D max_point, int num_rows, int num_cols, float node_mass, float ks, vector<pair<int, int>> pinned_nodes)
+    Net(Vector3D min_point, Vector3D max_point, int num_rows, int num_cols, float node_mass, float k1, float k2, float k3, vector<pair<int, int>> pinned_nodes)
     {
-        // On xy plane
+        // Create masses
         double grid_x = (max_point.x - min_point.x) / num_cols;
         double grid_y = (max_point.y - min_point.y) / num_rows;
+        double grid_z = (max_point.z - min_point.z) / num_rows;
         for (int i = 0; i <= num_rows; ++i)
             for (int j = 0; j <= num_cols; ++j)
-                vertices.push_back(new Vertex(min_point + Vector3D(j * grid_x, i * grid_y, 0), node_mass, false));
+                vertices.push_back(new Vertex(min_point + Vector3D(j * grid_x, i * grid_y, i * grid_z), node_mass, false));
         for (auto x : pinned_nodes)
             vertices[x.first * (num_cols + 1) + x.second]->pinned = true;
-        // Horizontal
+
+        // Horizontal - Structural
         for (int i = 0; i <= num_rows; ++i)
             for (int j = 0; j < num_cols; ++j)
-                springs.push_back(new Spring(vertices[i * (num_cols + 1) + j], vertices[i * (num_cols + 1) + j + 1], ks));
-        // Vertical
+                springs.push_back(new Spring(vertices[i * (num_cols + 1) + j], vertices[i * (num_cols + 1) + j + 1], k1));
+        // Vertical - Structural
         for (int i = 0; i < num_rows; ++i)
             for (int j = 0; j <= num_cols; ++j)
-                springs.push_back(new Spring(vertices[i * (num_cols + 1) + j], vertices[(i + 1) * (num_cols + 1) + j], ks));
-        // Diagonal
+                springs.push_back(new Spring(vertices[i * (num_cols + 1) + j], vertices[(i + 1) * (num_cols + 1) + j], k1));
+        // Diagonal - Shear
         for (int i = 0; i < num_rows; ++i)
             for (int j = num_cols; j > 0; --j)
-                springs.push_back(new Spring(vertices[i * (num_cols + 1) + j], vertices[(i + 1) * (num_cols + 1) + j - 1], 0.1f));
-        // Antidiagonal
+                springs.push_back(new Spring(vertices[i * (num_cols + 1) + j], vertices[(i + 1) * (num_cols + 1) + j - 1], k2));
+        // Antidiagonal - Shear
         for (int i = 0; i < num_rows; ++i)
             for (int j = 0; j < num_cols; ++j)
-                springs.push_back(new Spring(vertices[i * (num_cols + 1) + j], vertices[(i + 1) * (num_cols + 1) + j + 1], 0.1f));
+                springs.push_back(new Spring(vertices[i * (num_cols + 1) + j], vertices[(i + 1) * (num_cols + 1) + j + 1], k2));
+        // Horizontal - Flexion
+        for (int i = 0; i <= num_rows; ++i)
+            for (int j = 0; j < num_cols - 1; ++j)
+                springs.push_back(new Spring(vertices[i * (num_cols + 1) + j], vertices[i * (num_cols + 1) + j + 2], k3));
+        // Vertical - Flexion
+        for (int i = 0; i < num_rows - 1; ++i)
+            for (int j = 0; j <= num_cols; ++j)
+                springs.push_back(new Spring(vertices[i * (num_cols + 1) + j], vertices[(i + 2) * (num_cols + 1) + j], k3));
 
         // Create mesh
         for (int i = 0; i < num_rows; ++i)
@@ -116,13 +126,13 @@ public:
             vertices[i]->normal = vertices[i]->normal / share_num[i];
     }
 
-    void SimulateVerlet(float delta_t, Vector3D gravity)
+    void SimulateVerlet(float delta_t, Vector3D gravity, float damping)
     {
         for (auto &s : springs)
         {
             // Simulate one timestep of the rope using explicit Verlet（solving constraints)
             double distance = (s->v1->position - s->v2->position).norm();
-            Vector3D force = -s->ks * (s->v1->position - s->v2->position) / distance * (distance - s->rest_length);
+            Vector3D force = -s->k * (s->v1->position - s->v2->position) / distance * (distance - s->rest_length);
             s->v1->forces += force;
             s->v2->forces += -force;
         }
@@ -134,7 +144,7 @@ public:
                 // Set the new position of the rope mass, add global Verlet damping
                 Vector3D temp_position = v->position;
                 v->forces += gravity * v->mass;
-                v->position = 2 * v->position - v->last_position + v->forces / v->mass * delta_t * delta_t * (1 - 0.05);
+                v->position = 2 * v->position - v->last_position + v->forces / v->mass * delta_t * delta_t * (1 - damping);
                 v->last_position = temp_position;
             }
             v->forces = Vector3D(0, 0, 0);
@@ -143,13 +153,13 @@ public:
         CalculateNormal();
     }
 
-    void SimulateEuler(float delta_t, Vector3D gravity)
+    void SimulateEuler(float delta_t, Vector3D gravity, float damping)
     {
         for (auto &s : springs)
         {
             // Use Hooke's law to calculate the force on a node
             double distance = (s->v1->position - s->v2->position).norm();
-            Vector3D force = -s->ks * (s->v1->position - s->v2->position) / distance * (distance - s->rest_length);
+            Vector3D force = -s->k * (s->v1->position - s->v2->position) / distance * (distance - s->rest_length);
             s->v1->forces += force;
             s->v2->forces += -force;
         }
@@ -161,7 +171,7 @@ public:
                 // Add the force due to gravity, then compute the new velocity and position, add global damping
                 v->forces += gravity * v->mass;
                 v->velocity += v->forces / v->mass * delta_t;
-                v->position += v->velocity * delta_t * (1 - 0.05);
+                v->position += v->velocity * delta_t * (1 - damping);
             }
             // Reset all forces on each mass
             v->forces = Vector3D(0, 0, 0);
