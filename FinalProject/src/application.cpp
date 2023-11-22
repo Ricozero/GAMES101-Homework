@@ -6,7 +6,7 @@
 
 #include "application.h"
 
-#define USE_2D
+// #define USE_2D
 
 void Application::init()
 {
@@ -35,22 +35,43 @@ void Application::init()
         #version 330 core
         layout (location = 0) in vec3 aPos;
 
+        uniform int screenWidth;
+        uniform int screenHeight;
+
+        float aspectRatio = float(screenWidth) / screenHeight;
+        float t = 300, b = -t, r = t * aspectRatio, l = -r, n = 1, f = -2;
+        mat4 orth = mat4(
+            2/(r-l), 0, 0, -(r+l)/(r-l),
+            0, 2/(t-b), 0, -(t+b)/(t-b),
+            0, 0, 2/(n-f), -(f+n)/(f-n),
+            0, 0, 0, 1
+        );
+
         void main()
         {
-            gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+            vec4 pos = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+            gl_Position = orth * pos;
         }
     )delimiter";
     glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
     glCompileShader(vertex_shader);
+    int success;
+    char infoLog[512];
+    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(vertex_shader, 512, NULL, infoLog);
+        cout << infoLog << endl;
+    }
 
     int fragment_shader_euler = glCreateShader(GL_FRAGMENT_SHADER);
     const char *fragment_shader_source_euler = R"delimiter(
         #version 330 core
-        out vec4 FragColor;
+        out vec4 fragColor;
 
         void main()
         {
-            FragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+            fragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
         }
     )delimiter";
     glShaderSource(fragment_shader_euler, 1, &fragment_shader_source_euler, NULL);
@@ -64,11 +85,11 @@ void Application::init()
     int fragment_shader_verlet = glCreateShader(GL_FRAGMENT_SHADER);
     const char *fragment_shader_source_verlet = R"delimiter(
         #version 330 core
-        out vec4 FragColor;
+        out vec4 fragColor;
 
         void main()
         {
-            FragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+            fragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
         }
     )delimiter";
     glShaderSource(fragment_shader_verlet, 1, &fragment_shader_source_verlet, NULL);
@@ -116,13 +137,8 @@ Application::~Application()
 void Application::create_scene()
 {
     int num_rows = 20, num_cols = 20;
-#ifdef USE_2D
     net_euler = new Net(Vector3D(-200, -200, -1), Vector3D(200, 200, -1), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
     net_verlet = new Net(Vector3D(-200, -200, -1), Vector3D(200, 200, -1), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
-#else
-    net_euler = new Net(Vector3D(-0.5, -0.5, 0), Vector3D(0.5, 0.5, 0), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
-    net_verlet = new Net(Vector3D(-0.5, -0.5, 0), Vector3D(0.5, 0.5, 0), num_rows, num_cols, config.mass, config.ks, {{num_rows, 0}, {num_rows, num_cols}});
-#endif
 }
 
 void Application::destroy_scene()
@@ -194,7 +210,6 @@ void Application::render()
     }
 #else
     if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     size_t size_v = max(net_euler->vertices.size(), net_verlet->vertices.size());
     auto vertices = new float[size_v][3];
@@ -211,6 +226,20 @@ void Application::render()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     glDrawElements(GL_TRIANGLES, (GLsizei)net_euler->mesh.size(), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+
+    for (int i = 0; i < net_verlet->vertices.size(); ++i)
+    {
+        vertices[i][0] = (float)net_verlet->vertices[i]->position.x;
+        vertices[i][1] = (float)net_verlet->vertices[i]->position.y;
+        vertices[i][2] = (float)net_verlet->vertices[i]->position.z;
+    }
+    glUseProgram(shader_program_verlet);
+    glBindVertexArray(vao_verlet);
+    glBufferData(GL_ARRAY_BUFFER, net_verlet->vertices.size() * 3 * sizeof(float), vertices, GL_STREAM_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glDrawElements(GL_TRIANGLES, (GLsizei)net_verlet->mesh.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 
     delete[] vertices;
@@ -280,10 +309,23 @@ void Application::resize(size_t w, size_t h)
     screen_width = w;
     screen_height = h;
 
+#ifdef USE_2D
     float half_width = (float)screen_width / 2;
     float half_height = (float)screen_height / 2;
-
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(-half_width, half_width, -half_height, half_height, 1, 0);
+#else
+    int width_location, height_location;
+    width_location = glGetUniformLocation(shader_program_euler, "screenWidth");
+    height_location = glGetUniformLocation(shader_program_euler, "screenHeight");
+    glUseProgram(shader_program_euler);
+    glUniform1i(width_location, (GLint)screen_width);
+    glUniform1i(height_location, (GLint)screen_height);
+    width_location = glGetUniformLocation(shader_program_verlet, "screenWidth");
+    height_location = glGetUniformLocation(shader_program_verlet, "screenHeight");
+    glUseProgram(shader_program_verlet);
+    glUniform1i(width_location, (GLint)screen_width);
+    glUniform1i(height_location, (GLint)screen_height);
+#endif
 }

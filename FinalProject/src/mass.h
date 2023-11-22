@@ -80,10 +80,10 @@ public:
                 int index = i * (num_cols + 1) + j;
                 mesh.push_back(index);
                 mesh.push_back(index + 1);
-                mesh.push_back(index + num_cols + 1);
+                mesh.push_back(index + (num_cols + 1) + 1);
                 mesh.push_back(index);
-                mesh.push_back(index + num_cols + 1);
-                mesh.push_back(index + num_cols);
+                mesh.push_back(index + (num_cols + 1) + 1);
+                mesh.push_back(index + (num_cols + 1));
             }
         CalculateNormal();
     }
