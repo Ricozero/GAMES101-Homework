@@ -49,6 +49,10 @@ struct Config
 
     // Rendering variables
     bool wireframe;
+    bool render_euler;
+    bool simulate_euler;
+    bool render_verlet;
+    bool simulate_verlet;
 };
 
 class Application : public Renderer

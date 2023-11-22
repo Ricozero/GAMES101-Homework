@@ -155,15 +155,19 @@ void Application::update()
         auto t_now = chrono::high_resolution_clock::now();
         float t_elapsed = chrono::duration<float>(t_now - t_old).count();
         t_old = t_now;
-        net_euler->SimulateEuler(t_elapsed, config.gravity, config.damping);
-        net_verlet->SimulateVerlet(t_elapsed, config.gravity, config.damping);
+        if (config.simulate_euler)
+            net_euler->SimulateEuler(t_elapsed, config.gravity, config.damping);
+        if (config.simulate_verlet)
+            net_verlet->SimulateVerlet(t_elapsed, config.gravity, config.damping);
     }
     else
     {
         for (int i = 0; i < config.steps_per_frame; i++)
         {
-            net_euler->SimulateEuler(1 / (float)config.steps_per_frame, config.gravity, config.damping);
-            net_verlet->SimulateVerlet(1 / (float)config.steps_per_frame, config.gravity, config.damping);
+            if (config.simulate_euler)
+                net_euler->SimulateEuler(1 / (float)config.steps_per_frame, config.gravity, config.damping);
+            if (config.simulate_verlet)
+                net_verlet->SimulateVerlet(1 / (float)config.steps_per_frame, config.gravity, config.damping);
         }
     }
 }
@@ -211,33 +215,39 @@ void Application::render_ropes()
     size_t size_v = max(net_euler->vertices.size(), net_verlet->vertices.size());
     auto vertices = new float[size_v][3];
 
-    for (int i = 0; i < net_euler->vertices.size(); ++i)
+    if (config.render_euler)
     {
-        vertices[i][0] = (float)net_euler->vertices[i]->position.x;
-        vertices[i][1] = (float)net_euler->vertices[i]->position.y;
-        vertices[i][2] = (float)net_euler->vertices[i]->position.z;
+        for (int i = 0; i < net_euler->vertices.size(); ++i)
+        {
+            vertices[i][0] = (float)net_euler->vertices[i]->position.x;
+            vertices[i][1] = (float)net_euler->vertices[i]->position.y;
+            vertices[i][2] = (float)net_euler->vertices[i]->position.z;
+        }
+        glUseProgram(shader_program_euler);
+        glBindVertexArray(vao_euler);
+        glBufferData(GL_ARRAY_BUFFER, net_euler->vertices.size() * 3 * sizeof(float), vertices, GL_STREAM_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glDrawElements(GL_TRIANGLES, (GLsizei)net_euler->mesh.size(), GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
     }
-    glUseProgram(shader_program_euler);
-    glBindVertexArray(vao_euler);
-    glBufferData(GL_ARRAY_BUFFER, net_euler->vertices.size() * 3 * sizeof(float), vertices, GL_STREAM_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glDrawElements(GL_TRIANGLES, (GLsizei)net_euler->mesh.size(), GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
 
-    for (int i = 0; i < net_verlet->vertices.size(); ++i)
+    if (config.render_verlet)
     {
-        vertices[i][0] = (float)net_verlet->vertices[i]->position.x;
-        vertices[i][1] = (float)net_verlet->vertices[i]->position.y;
-        vertices[i][2] = (float)net_verlet->vertices[i]->position.z;
+        for (int i = 0; i < net_verlet->vertices.size(); ++i)
+        {
+            vertices[i][0] = (float)net_verlet->vertices[i]->position.x;
+            vertices[i][1] = (float)net_verlet->vertices[i]->position.y;
+            vertices[i][2] = (float)net_verlet->vertices[i]->position.z;
+        }
+        glUseProgram(shader_program_verlet);
+        glBindVertexArray(vao_verlet);
+        glBufferData(GL_ARRAY_BUFFER, net_verlet->vertices.size() * 3 * sizeof(float), vertices, GL_STREAM_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glDrawElements(GL_TRIANGLES, (GLsizei)net_verlet->mesh.size(), GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
     }
-    glUseProgram(shader_program_verlet);
-    glBindVertexArray(vao_verlet);
-    glBufferData(GL_ARRAY_BUFFER, net_verlet->vertices.size() * 3 * sizeof(float), vertices, GL_STREAM_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glDrawElements(GL_TRIANGLES, (GLsizei)net_verlet->mesh.size(), GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
 
     delete[] vertices;
     if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -302,7 +312,18 @@ void Application::render_config_window()
         }
 
 #ifndef USE_2D
+        ImGui::Text("3D only options:");
+        ImGui::Text("Euler:");
         ImGui::SameLine();
+        ImGui::Checkbox("Render##euler", &config.render_euler);
+        ImGui::SameLine();
+        ImGui::Checkbox("Simulate##euler", &config.simulate_euler);
+        ImGui::SameLine();
+        ImGui::Text("Verlet:");
+        ImGui::SameLine();
+        ImGui::Checkbox("Render##verlet", &config.render_verlet);
+        ImGui::SameLine();
+        ImGui::Checkbox("Simulate##verlet", &config.simulate_verlet);
         if (ImGui::Button(("Switch to " + string(config.wireframe ? "normal" : "wireframe") + " mode").c_str()))
             config.wireframe = !config.wireframe;
 #endif
