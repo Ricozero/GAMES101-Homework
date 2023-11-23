@@ -95,7 +95,7 @@ public:
                 mesh.push_back(index + (num_cols + 1) + 1);
                 mesh.push_back(index + (num_cols + 1));
             }
-        CalculateNormal();
+        // CalculateNormal();
     }
 
     ~Net()
@@ -150,7 +150,7 @@ public:
             v->forces = Vector3D(0, 0, 0);
         }
 
-        CalculateNormal();
+        // CalculateNormal();
     }
 
     void SimulateEuler(float delta_t, Vector3D gravity, float damping)
@@ -177,7 +177,7 @@ public:
             v->forces = Vector3D(0, 0, 0);
         }
 
-        CalculateNormal();
+        // CalculateNormal();
     }
 };
 

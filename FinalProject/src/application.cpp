@@ -8,6 +8,11 @@
 
 // #define USE_2D
 
+Application::Application(Config config, Viewer *viewer): config(config), viewer(viewer)
+{
+    memset(durations, 0, sizeof(durations));
+}
+
 void Application::init()
 {
     create_scene();
@@ -328,9 +333,15 @@ void Application::render_config_window()
 
 void Application::render()
 {
+    auto t0 = chrono::high_resolution_clock::now();
     update();
+    auto t1 = chrono::high_resolution_clock::now();
     render_ropes();
     render_config_window();
+    auto t2 = chrono::high_resolution_clock::now();
+    durations[0] = chrono::duration<float, milli>(t2 - t0).count();
+    durations[1] = chrono::duration<float, milli>(t1 - t0).count();
+    durations[2] = chrono::duration<float, milli>(t2 - t1).count();
 }
 
 void Application::resize(size_t w, size_t h)
@@ -357,4 +368,11 @@ void Application::resize(size_t w, size_t h)
     glUniform1i(width_location, (GLint)screen_width);
     glUniform1i(height_location, (GLint)screen_height);
 #endif
+}
+
+string Application::info()
+{
+    char buf[1024];
+    snprintf(buf, sizeof(buf), "%.1f/%.1f/%.1f", durations[0], durations[1], durations[2]);
+    return buf;
 }

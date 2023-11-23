@@ -33,6 +33,10 @@ struct Config
         steps_per_frame = DEFAULT_STEPS_PER_FRAME;
         realtime = false;
         wireframe = false;
+        render_euler = true;
+        simulate_euler = true;
+        render_verlet = true;
+        simulate_verlet = true;
     }
 
     // Rope config variables
@@ -58,7 +62,7 @@ struct Config
 class Application : public Renderer
 {
 public:
-    Application(Config config, Viewer *viewer): config(config), viewer(viewer) {}
+    Application(Config config, Viewer *viewer);
     ~Application();
 
     void init();
@@ -71,16 +75,7 @@ public:
     void resize(size_t w, size_t h);
 
     string name() { return "Rope Simulator"; }
-    string info()
-    {
-        const static string prompt = "FPS: ";
-        static auto t_old = chrono::high_resolution_clock::now();
-        auto t_now = chrono::high_resolution_clock::now();
-        double t_elapsed = chrono::duration<double>(t_now - t_old).count();
-        t_old = t_now;
-        int fps = int(1 / t_elapsed);
-        return prompt + to_string(fps);
-    }
+    string info();
 
 private:
     const Viewer *viewer;
@@ -99,6 +94,8 @@ private:
     unsigned int ebo_verlet;
     unsigned int shader_program_euler;
     unsigned int shader_program_verlet;
+
+    float durations[3];
 };
 
 #endif // APPLICATION_H
