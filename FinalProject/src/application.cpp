@@ -256,37 +256,35 @@ void Application::render_ropes()
 
 void Application::render_config_window()
 {
+    const static int SLIDER_WIDTH = 150;
+
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    ImGui::SetNextWindowSize({-1, -1});
+    ImGui::SetNextWindowSize({0, 0});
     {
         ImGui::Begin("Config");
 
+        ImGui::SetNextItemWidth(SLIDER_WIDTH);
         ImGui::SliderFloat("mass (needs restart)", &config.mass, 0, 10);
-        ImGui::SameLine();
-        if (ImGui::Button("Reset##mass"))
-            config.mass = DEFAULT_MASS;
+        ImGui::SameLine(); if (ImGui::Button("Reset##mass")) config.mass = DEFAULT_MASS;
 
+        ImGui::SetNextItemWidth(SLIDER_WIDTH);
         ImGui::SliderFloat("k1 (needs restart)", &config.k1, 0, 1000);
-        ImGui::SameLine();
-        if (ImGui::Button("Reset##k1"))
-            config.k1 = DEFAULT_K1;
+        ImGui::SameLine(); if (ImGui::Button("Reset##k1")) config.k1 = DEFAULT_K1;
+        ImGui::SetNextItemWidth(SLIDER_WIDTH);
         ImGui::SliderFloat("k2 (needs restart)", &config.k2, 0, 10);
-        ImGui::SameLine();
-        if (ImGui::Button("Reset##k2"))
-            config.k2 = DEFAULT_K2;
+        ImGui::SameLine(); if (ImGui::Button("Reset##k2")) config.k2 = DEFAULT_K2;
+        ImGui::SetNextItemWidth(SLIDER_WIDTH);
         ImGui::SliderFloat("k3 (needs restart)", &config.k3, 0, 10);
-        ImGui::SameLine();
-        if (ImGui::Button("Reset##k3"))
-            config.k3 = DEFAULT_K3;
+        ImGui::SameLine(); if (ImGui::Button("Reset##k3")) config.k3 = DEFAULT_K3;
 
+        ImGui::SetNextItemWidth(SLIDER_WIDTH);
         ImGui::SliderFloat("damping", &config.damping, 0, 1);
-        ImGui::SameLine();
-        if (ImGui::Button("Reset##damping"))
-            config.damping = DEFAULT_DAMPING;
+        ImGui::SameLine(); if (ImGui::Button("Reset##damping")) config.damping = DEFAULT_DAMPING;
 
         static float gravity = 1;
+        ImGui::SetNextItemWidth(SLIDER_WIDTH);
         ImGui::SliderFloat("gravity", &gravity, -10, 10);
         config.gravity = gravity * DEFAULT_GRAVITY;
         ImGui::SameLine();
@@ -296,10 +294,9 @@ void Application::render_config_window()
             config.gravity = DEFAULT_GRAVITY;
         }
 
+        ImGui::SetNextItemWidth(SLIDER_WIDTH);
         ImGui::SliderInt("steps_per_frame", &config.steps_per_frame, 0, 1000);
-        ImGui::SameLine();
-        if (ImGui::Button("Reset##steps_per_frame"))
-            config.steps_per_frame = DEFAULT_STEPS_PER_FRAME;
+        ImGui::SameLine(); if (ImGui::Button("Reset##steps_per_frame")) config.steps_per_frame = DEFAULT_STEPS_PER_FRAME;
 
         if (ImGui::Button(("Switch to " + string(config.realtime ? "simulation" : "realtime") + " mode").c_str()))
             config.realtime = !config.realtime;
@@ -314,16 +311,11 @@ void Application::render_config_window()
 #ifndef USE_2D
         ImGui::Text("3D only options:");
         ImGui::Text("Euler:");
-        ImGui::SameLine();
-        ImGui::Checkbox("Render##euler", &config.render_euler);
-        ImGui::SameLine();
-        ImGui::Checkbox("Simulate##euler", &config.simulate_euler);
-        ImGui::SameLine();
+        ImGui::SameLine(); ImGui::Checkbox("Render##euler", &config.render_euler);
+        ImGui::SameLine(); ImGui::Checkbox("Simulate##euler", &config.simulate_euler);
         ImGui::Text("Verlet:");
-        ImGui::SameLine();
-        ImGui::Checkbox("Render##verlet", &config.render_verlet);
-        ImGui::SameLine();
-        ImGui::Checkbox("Simulate##verlet", &config.simulate_verlet);
+        ImGui::SameLine(); ImGui::Checkbox("Render##verlet", &config.render_verlet);
+        ImGui::SameLine(); ImGui::Checkbox("Simulate##verlet", &config.simulate_verlet);
         if (ImGui::Button(("Switch to " + string(config.wireframe ? "normal" : "wireframe") + " mode").c_str()))
             config.wireframe = !config.wireframe;
 #endif
