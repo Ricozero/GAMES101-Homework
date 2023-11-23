@@ -44,7 +44,7 @@ class Viewer {
    * This will open up a window and install all the event handlers
    * and make the viewer ready for drawing.
    */
-  void init( void );
+  void init( int width = 960, int height = 640 );
   
   /**
    * Start the drawing loop of the viewer.

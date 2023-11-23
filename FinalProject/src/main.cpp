@@ -12,7 +12,7 @@ int main(int argc, char **argv)
     Application *app = new Application(config, &viewer);
 
     viewer.set_renderer(app);
-    viewer.init();
+    viewer.init(1200, 800);
     viewer.start();
 
     return 0;

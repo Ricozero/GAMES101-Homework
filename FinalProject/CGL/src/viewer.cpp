@@ -13,9 +13,6 @@
 using namespace std;
 using namespace chrono;
 
-#define DEFAULT_W 960
-#define DEFAULT_H 640
-
 namespace CGL {
 
 // HDPI display
@@ -57,7 +54,7 @@ Viewer::~Viewer() {
 }
 
 
-void Viewer::init() {
+void Viewer::init(int width, int height) {
 
   // initialize glfw
   glfwSetErrorCallback( err_callback );
@@ -68,7 +65,7 @@ void Viewer::init() {
 
   // create window
   string title = renderer ? "CGL: " + renderer->name() : "CGL";
-  window = glfwCreateWindow( DEFAULT_W, DEFAULT_H, title.c_str(), NULL, NULL );
+  window = glfwCreateWindow( width, height, title.c_str(), NULL, NULL );
   if (!window) {
     out_err("Error: could not create window!");
     glfwTerminate();
@@ -108,7 +105,7 @@ void Viewer::init() {
 
   // resize components to current window size, get DPI
   glfwGetFramebufferSize(window, (int*) &buffer_w, (int*) &buffer_h );
-  if( buffer_w > DEFAULT_W ) HDPI = true;
+  if( buffer_w > width ) HDPI = true;
 
   // initialize renderer if already set
   if (renderer){
