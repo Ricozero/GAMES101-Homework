@@ -11,6 +11,9 @@
 Application::Application(Config config, Viewer *viewer): config(config), viewer(viewer)
 {
     memset(durations, 0, sizeof(durations));
+    first_drag = true;
+    yaw = 0;
+    pitch = 0;
 }
 
 void Application::init()
@@ -28,6 +31,8 @@ void Application::init()
     glLineWidth(4);
     glColor3f(1.0, 1.0, 1.0);
 #else
+    glEnable(GL_DEPTH_TEST); 
+
     glGenVertexArrays(1, &vao_euler);
     glGenVertexArrays(1, &vao_verlet);
     glGenBuffers(1, &vbo_euler);
@@ -42,20 +47,22 @@ void Application::init()
 
         uniform int screenWidth;
         uniform int screenHeight;
+        uniform mat4 view;
 
+        // In OpenGL, camera space is left-handed, z+ pointing from camera towards front
         float aspectRatio = float(screenWidth) / screenHeight;
-        float t = 300, b = -t, r = t * aspectRatio, l = -r, n = 2, f = -2;
+        float t = 400, b = -t, r = t * aspectRatio, l = -r, n = -r, f = r;
         mat4 orth = mat4(
             2/(r-l), 0, 0, -(r+l)/(r-l),
             0, 2/(t-b), 0, -(t+b)/(t-b),
-            0, 0, 2/(n-f), -(f+n)/(f-n),
+            0, 0, -2/(f-n), -(f+n)/(f-n),
             0, 0, 0, 1
         );
 
         void main()
         {
             vec4 pos = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-            gl_Position = orth * pos;
+            gl_Position = orth * view * pos;
         }
     )delimiter";
     glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
@@ -111,15 +118,20 @@ void Application::init()
     glBindBuffer(GL_ARRAY_BUFFER, vbo_euler);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_euler);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, net_euler->mesh.size() * sizeof(int), net_euler->mesh.data(), GL_STATIC_DRAW);
-    // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    // glEnableVertexAttribArray(0);
 
     glBindVertexArray(vao_verlet);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_verlet);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_verlet);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, net_verlet->mesh.size() * sizeof(int), net_verlet->mesh.data(), GL_STATIC_DRAW);
-    // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    // glEnableVertexAttribArray(0);
+
+    float view[4][4]{0};
+    for (int i = 0; i < 4; ++i)
+        view[i][i] = 1;
+    int view_location = glGetUniformLocation(shader_program_euler, "view");
+    glUseProgram(shader_program_euler);
+    glUniformMatrix4fv(view_location, 1, GL_TRUE, (GLfloat*)view);
+    glUseProgram(shader_program_verlet);
+    glUniformMatrix4fv(view_location, 1, GL_TRUE, (GLfloat*)view);
 #endif
 
     IMGUI_CHECKVERSION();
@@ -142,8 +154,8 @@ Application::~Application()
 void Application::create_scene()
 {
     int num_rows = 20, num_cols = 20;
-    net_euler = new Net(Vector3D(-200, -200, 0), Vector3D(200, 200, 0), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
-    net_verlet = new Net(Vector3D(-200, -200, 0), Vector3D(200, 200, 0), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
+    net_euler = new Net(Vector3D(-200, -200, -100), Vector3D(200, 200, -100), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
+    net_verlet = new Net(Vector3D(-200, -200, 100), Vector3D(200, 200, 200), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
 }
 
 void Application::destroy_scene()
@@ -152,7 +164,7 @@ void Application::destroy_scene()
     delete net_verlet;
 }
 
-void Application::update()
+void Application::simulate()
 {
     if (config.realtime)
     {
@@ -334,7 +346,7 @@ void Application::render_config_window()
 void Application::render()
 {
     auto t0 = chrono::high_resolution_clock::now();
-    update();
+    simulate();
     auto t1 = chrono::high_resolution_clock::now();
     render_ropes();
     render_config_window();
@@ -362,11 +374,67 @@ void Application::resize(size_t w, size_t h)
     glUseProgram(shader_program_euler);
     glUniform1i(width_location, (GLint)screen_width);
     glUniform1i(height_location, (GLint)screen_height);
-    width_location = glGetUniformLocation(shader_program_verlet, "screenWidth");
-    height_location = glGetUniformLocation(shader_program_verlet, "screenHeight");
     glUseProgram(shader_program_verlet);
     glUniform1i(width_location, (GLint)screen_width);
     glUniform1i(height_location, (GLint)screen_height);
+#endif
+}
+
+void Application::mouse_button_event(int button, int event)
+{
+    if (button == GLFW_MOUSE_BUTTON_1 && event == GLFW_RELEASE)
+    {
+        first_drag = true;
+    }
+}
+
+void Application::cursor_event(float x, float y, unsigned char keys)
+{
+#ifndef USE_2D
+    if (glfwGetMouseButton(viewer->get_window(), GLFW_MOUSE_BUTTON_1) != GLFW_PRESS)
+        return;
+    static float x_old, y_old;
+    if (first_drag)
+    {
+        x_old = x;
+        y_old = y;
+        first_drag = false;
+        return;
+    }
+    float x_offset = x - x_old;
+    float y_offset = y_old - y;
+    x_old = x;
+    y_old = y;
+
+    float sensitivity = 0.2f;
+    x_offset *= sensitivity;
+    y_offset *= sensitivity;
+    yaw   += x_offset;
+    pitch += y_offset;
+    yaw -= ((int)yaw / 360) * 360;
+    if (pitch > 89.9f) pitch = 89.9f;
+    if (pitch < -89.9f) pitch = -89.9f;
+
+    auto radians = [](float x){ return x * 3.1415926f / 180.0f; };
+    float yaw_ = radians(yaw);
+    float pitch_ = -radians(pitch);
+    float view[4][4]{0};
+    for (int i = 0; i < 4; ++i)
+        view[i][i] = 1;
+    view[0][0] = cos(yaw_);
+    view[0][1] = 0;
+    view[0][2] = sin(yaw_);
+    view[1][0] = sin(yaw_) * sin(pitch_);
+    view[1][1] = cos(pitch_);
+    view[1][2] = -cos(yaw_) * sin(pitch_);
+    view[2][0] = -sin(yaw_);
+    view[2][1] = cos(yaw_) * sin(pitch_);
+    view[2][2] = cos(yaw_) * cos(pitch_);
+    int view_location = glGetUniformLocation(shader_program_euler, "view");
+    glUseProgram(shader_program_euler);
+    glUniformMatrix4fv(view_location, 1, GL_TRUE, (GLfloat*)view);
+    glUseProgram(shader_program_verlet);
+    glUniformMatrix4fv(view_location, 1, GL_TRUE, (GLfloat*)view);
 #endif
 }
 

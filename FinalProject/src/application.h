@@ -68,11 +68,13 @@ public:
     void init();
     void create_scene();
     void destroy_scene();
-    void update();
+    void simulate();
     void render_ropes();
     void render_config_window();
     void render();
     void resize(size_t w, size_t h);
+    void mouse_button_event(int button, int event);
+    void cursor_event(float x, float y, unsigned char keys);
 
     string name() { return "Rope Simulator"; }
     string info();
@@ -86,6 +88,9 @@ private:
 
     Net *net_euler;
     Net *net_verlet;
+
+    float durations[3];
+
     unsigned int vao_euler;
     unsigned int vao_verlet;
     unsigned int vbo_euler;
@@ -94,8 +99,9 @@ private:
     unsigned int ebo_verlet;
     unsigned int shader_program_euler;
     unsigned int shader_program_verlet;
-
-    float durations[3];
+    bool first_drag;
+    float yaw;
+    float pitch;
 };
 
 #endif // APPLICATION_H
