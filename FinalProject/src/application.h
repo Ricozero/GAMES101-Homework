@@ -75,6 +75,7 @@ public:
     void resize(size_t w, size_t h);
     void mouse_button_event(int button, int event);
     void cursor_event(float x, float y, unsigned char keys);
+    void scroll_event(float offset_x, float offset_y);
 
     string name() { return "Rope Simulator"; }
     string info();
@@ -102,6 +103,7 @@ private:
     bool first_drag;
     float yaw;
     float pitch;
+    float scale;
 };
 
 #endif // APPLICATION_H

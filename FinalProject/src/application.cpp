@@ -14,6 +14,7 @@ Application::Application(Config config, Viewer *viewer): config(config), viewer(
     first_drag = true;
     yaw = 0;
     pitch = 0;
+    scale = 1;
 }
 
 void Application::init()
@@ -31,8 +32,6 @@ void Application::init()
     glLineWidth(4);
     glColor3f(1.0, 1.0, 1.0);
 #else
-    glEnable(GL_DEPTH_TEST); 
-
     glGenVertexArrays(1, &vao_euler);
     glGenVertexArrays(1, &vao_verlet);
     glGenBuffers(1, &vbo_euler);
@@ -48,6 +47,7 @@ void Application::init()
         uniform int screenWidth;
         uniform int screenHeight;
         uniform mat4 view;
+        uniform float scale;
 
         // In OpenGL, camera space is left-handed, z+ pointing from camera towards front
         float aspectRatio = float(screenWidth) / screenHeight;
@@ -59,10 +59,17 @@ void Application::init()
             0, 0, 0, 1
         );
 
+        mat4 model = mat4(
+            scale, 0, 0, 0,
+            0, scale, 0, 0,
+            0, 0, scale, 0,
+            0, 0, 0, 1
+        );
+
         void main()
         {
             vec4 pos = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-            gl_Position = orth * view * pos;
+            gl_Position = orth * view * model * pos;
         }
     )delimiter";
     glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
@@ -132,6 +139,12 @@ void Application::init()
     glUniformMatrix4fv(view_location, 1, GL_TRUE, (GLfloat*)view);
     glUseProgram(shader_program_verlet);
     glUniformMatrix4fv(view_location, 1, GL_TRUE, (GLfloat*)view);
+
+    int scale_location = glGetUniformLocation(shader_program_euler, "scale");
+    glUseProgram(shader_program_euler);
+    glUniform1f(scale_location, 1);
+    glUseProgram(shader_program_verlet);
+    glUniform1f(scale_location, 1);
 #endif
 
     IMGUI_CHECKVERSION();
@@ -227,8 +240,8 @@ void Application::render_ropes()
         glFlush();
     }
 #else
+    glEnable(GL_DEPTH_TEST);
     if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
     size_t size_v = max(net_euler->vertices.size(), net_verlet->vertices.size());
     auto vertices = new float[size_v][3];
 
@@ -268,6 +281,7 @@ void Application::render_ropes()
 
     delete[] vertices;
     if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glDisable(GL_DEPTH_TEST);
 #endif
 }
 
@@ -435,6 +449,19 @@ void Application::cursor_event(float x, float y, unsigned char keys)
     glUniformMatrix4fv(view_location, 1, GL_TRUE, (GLfloat*)view);
     glUseProgram(shader_program_verlet);
     glUniformMatrix4fv(view_location, 1, GL_TRUE, (GLfloat*)view);
+#endif
+}
+
+void Application::scroll_event(float offset_x, float offset_y)
+{
+#ifndef USE_2D
+    float sensitivity = 0.05f;
+    scale *= (1 + sensitivity * offset_y);
+    int view_location = glGetUniformLocation(shader_program_euler, "scale");
+    glUseProgram(shader_program_euler);
+    glUniform1f(view_location, (GLfloat)scale);
+    glUseProgram(shader_program_verlet);
+    glUniform1f(view_location, (GLfloat)scale);
 #endif
 }
 
