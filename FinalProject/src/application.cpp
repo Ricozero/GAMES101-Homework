@@ -32,6 +32,7 @@ void Application::init()
     glLineWidth(4);
     glColor3f(1.0, 1.0, 1.0);
 #else
+    // Initialize buffers
     glGenVertexArrays(1, &vao_euler);
     glGenVertexArrays(1, &vao_verlet);
     glGenBuffers(1, &vbo_euler);
@@ -39,8 +40,19 @@ void Application::init()
     glGenBuffers(1, &ebo_euler);
     glGenBuffers(1, &ebo_verlet);
 
+    glBindVertexArray(vao_euler);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_euler);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_euler);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, net_euler->mesh.size() * sizeof(int), net_euler->mesh.data(), GL_STATIC_DRAW);
+
+    glBindVertexArray(vao_verlet);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_verlet);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_verlet);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, net_verlet->mesh.size() * sizeof(int), net_verlet->mesh.data(), GL_STATIC_DRAW);
+
+    // Initialize shaders
     int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    const char *vertex_shader_source = R"delimiter(
+    const char *vertex_shader_source = R"glsl(
         #version 330 core
         layout (location = 0) in vec3 aPos;
 
@@ -71,7 +83,7 @@ void Application::init()
             vec4 pos = vec4(aPos.x, aPos.y, aPos.z, 1.0);
             gl_Position = orth * view * model * pos;
         }
-    )delimiter";
+    )glsl";
     glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
     glCompileShader(vertex_shader);
     int success;
@@ -84,7 +96,7 @@ void Application::init()
     }
 
     int fragment_shader_euler = glCreateShader(GL_FRAGMENT_SHADER);
-    const char *fragment_shader_source_euler = R"delimiter(
+    const char *fragment_shader_source_euler = R"glsl(
         #version 330 core
         out vec4 fragColor;
 
@@ -92,7 +104,7 @@ void Application::init()
         {
             fragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
         }
-    )delimiter";
+    )glsl";
     glShaderSource(fragment_shader_euler, 1, &fragment_shader_source_euler, NULL);
     glCompileShader(fragment_shader_euler);
     shader_program_euler = glCreateProgram();
@@ -102,7 +114,7 @@ void Application::init()
     glDeleteShader(fragment_shader_euler);
 
     int fragment_shader_verlet = glCreateShader(GL_FRAGMENT_SHADER);
-    const char *fragment_shader_source_verlet = R"delimiter(
+    const char *fragment_shader_source_verlet = R"glsl(
         #version 330 core
         out vec4 fragColor;
 
@@ -110,7 +122,7 @@ void Application::init()
         {
             fragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
         }
-    )delimiter";
+    )glsl";
     glShaderSource(fragment_shader_verlet, 1, &fragment_shader_source_verlet, NULL);
     glCompileShader(fragment_shader_verlet);
     shader_program_verlet = glCreateProgram();
@@ -121,16 +133,7 @@ void Application::init()
 
     glDeleteShader(vertex_shader);
 
-    glBindVertexArray(vao_euler);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_euler);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_euler);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, net_euler->mesh.size() * sizeof(int), net_euler->mesh.data(), GL_STATIC_DRAW);
-
-    glBindVertexArray(vao_verlet);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_verlet);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_verlet);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, net_verlet->mesh.size() * sizeof(int), net_verlet->mesh.data(), GL_STATIC_DRAW);
-
+    // Initialize uniforms
     float view[4][4]{0};
     for (int i = 0; i < 4; ++i)
         view[i][i] = 1;
@@ -407,6 +410,7 @@ void Application::cursor_event(float x, float y, unsigned char keys)
 #ifndef USE_2D
     if (glfwGetMouseButton(viewer->get_window(), GLFW_MOUSE_BUTTON_1) != GLFW_PRESS)
         return;
+    if (ImGui::GetIO().WantCaptureMouse) return;
     static float x_old, y_old;
     if (first_drag)
     {
