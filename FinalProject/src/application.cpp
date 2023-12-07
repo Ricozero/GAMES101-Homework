@@ -223,9 +223,9 @@ void Application::render_ropes()
         }
 
         glBegin(GL_POINTS);
-        for (auto &v : object->vertices)
+        for (auto &m : object->masses)
         {
-            Vector3D p = v->position;
+            Vector3D p = m->position;
             glVertex2d(p.x, p.y);
         }
         glEnd();
@@ -233,8 +233,8 @@ void Application::render_ropes()
         glBegin(GL_LINES);
         for (auto &s : object->springs)
         {
-            Vector3D p1 = s->v1->position;
-            Vector3D p2 = s->v2->position;
+            Vector3D p1 = s->m1->position;
+            Vector3D p2 = s->m2->position;
             glVertex2d(p1.x, p1.y);
             glVertex2d(p2.x, p2.y);
         }
@@ -245,20 +245,20 @@ void Application::render_ropes()
 #else
     glEnable(GL_DEPTH_TEST);
     if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    size_t size_v = max(net_euler->vertices.size(), net_verlet->vertices.size());
-    auto vertices = new float[size_v][3];
+    size_t sz = max(net_euler->masses.size(), net_verlet->masses.size());
+    auto vertices = new float[sz][3];
 
     if (config.render_euler)
     {
-        for (int i = 0; i < net_euler->vertices.size(); ++i)
+        for (int i = 0; i < net_euler->masses.size(); ++i)
         {
-            vertices[i][0] = (float)net_euler->vertices[i]->position.x;
-            vertices[i][1] = (float)net_euler->vertices[i]->position.y;
-            vertices[i][2] = (float)net_euler->vertices[i]->position.z;
+            vertices[i][0] = (float)net_euler->masses[i]->position.x;
+            vertices[i][1] = (float)net_euler->masses[i]->position.y;
+            vertices[i][2] = (float)net_euler->masses[i]->position.z;
         }
         glUseProgram(shader_program_euler);
         glBindVertexArray(vao_euler);
-        glBufferData(GL_ARRAY_BUFFER, net_euler->vertices.size() * 3 * sizeof(float), vertices, GL_STREAM_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, net_euler->masses.size() * 3 * sizeof(float), vertices, GL_STREAM_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
         glDrawElements(GL_TRIANGLES, (GLsizei)net_euler->mesh.size(), GL_UNSIGNED_INT, 0);
@@ -267,15 +267,15 @@ void Application::render_ropes()
 
     if (config.render_verlet)
     {
-        for (int i = 0; i < net_verlet->vertices.size(); ++i)
+        for (int i = 0; i < net_verlet->masses.size(); ++i)
         {
-            vertices[i][0] = (float)net_verlet->vertices[i]->position.x;
-            vertices[i][1] = (float)net_verlet->vertices[i]->position.y;
-            vertices[i][2] = (float)net_verlet->vertices[i]->position.z;
+            vertices[i][0] = (float)net_verlet->masses[i]->position.x;
+            vertices[i][1] = (float)net_verlet->masses[i]->position.y;
+            vertices[i][2] = (float)net_verlet->masses[i]->position.z;
         }
         glUseProgram(shader_program_verlet);
         glBindVertexArray(vao_verlet);
-        glBufferData(GL_ARRAY_BUFFER, net_verlet->vertices.size() * 3 * sizeof(float), vertices, GL_STREAM_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, net_verlet->masses.size() * 3 * sizeof(float), vertices, GL_STREAM_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
         glDrawElements(GL_TRIANGLES, (GLsizei)net_verlet->mesh.size(), GL_UNSIGNED_INT, 0);
