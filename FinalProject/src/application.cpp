@@ -55,6 +55,8 @@ void Application::init()
     const char *vertex_shader_source = R"glsl(
         #version 330 core
         layout (location = 0) in vec3 aPos;
+        layout (location = 1) in vec3 aNormal;
+        out vec4 vertexNormal;
 
         uniform int screenWidth;
         uniform int screenHeight;
@@ -82,6 +84,7 @@ void Application::init()
         {
             vec4 pos = vec4(aPos.x, aPos.y, aPos.z, 1.0);
             gl_Position = orth * view * model * pos;
+            vertexNormal = vec4(aNormal.x, aNormal.y, aNormal.z, 1.0);
         }
     )glsl";
     glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
@@ -98,11 +101,13 @@ void Application::init()
     int fragment_shader_euler = glCreateShader(GL_FRAGMENT_SHADER);
     const char *fragment_shader_source_euler = R"glsl(
         #version 330 core
+        in vec4 vertexNormal;
         out vec4 fragColor;
 
         void main()
         {
-            fragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+            // fragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+            fragColor = vertexNormal;
         }
     )glsl";
     glShaderSource(fragment_shader_euler, 1, &fragment_shader_source_euler, NULL);
@@ -116,11 +121,13 @@ void Application::init()
     int fragment_shader_verlet = glCreateShader(GL_FRAGMENT_SHADER);
     const char *fragment_shader_source_verlet = R"glsl(
         #version 330 core
+        in vec4 vertexColor;
         out vec4 fragColor;
 
         void main()
         {
-            fragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+            // fragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+            fragColor = vertexColor;
         }
     )glsl";
     glShaderSource(fragment_shader_verlet, 1, &fragment_shader_source_verlet, NULL);
@@ -246,7 +253,7 @@ void Application::render_ropes()
     glEnable(GL_DEPTH_TEST);
     if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     size_t sz = max(net_euler->masses.size(), net_verlet->masses.size());
-    auto vertices = new float[sz][3];
+    auto vertices = new float[sz][6];
 
     if (config.render_euler)
     {
@@ -255,12 +262,17 @@ void Application::render_ropes()
             vertices[i][0] = (float)net_euler->masses[i]->position.x;
             vertices[i][1] = (float)net_euler->masses[i]->position.y;
             vertices[i][2] = (float)net_euler->masses[i]->position.z;
+            vertices[i][3] = (float)net_euler->masses[i]->normal.x;
+            vertices[i][4] = (float)net_euler->masses[i]->normal.y;
+            vertices[i][5] = (float)net_euler->masses[i]->normal.z;
         }
         glUseProgram(shader_program_euler);
         glBindVertexArray(vao_euler);
-        glBufferData(GL_ARRAY_BUFFER, net_euler->masses.size() * 3 * sizeof(float), vertices, GL_STREAM_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glBufferData(GL_ARRAY_BUFFER, net_euler->masses.size() * 6 * sizeof(float), vertices, GL_STREAM_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
         glDrawElements(GL_TRIANGLES, (GLsizei)net_euler->mesh.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
@@ -272,12 +284,17 @@ void Application::render_ropes()
             vertices[i][0] = (float)net_verlet->masses[i]->position.x;
             vertices[i][1] = (float)net_verlet->masses[i]->position.y;
             vertices[i][2] = (float)net_verlet->masses[i]->position.z;
+            vertices[i][3] = (float)net_verlet->masses[i]->normal.x;
+            vertices[i][4] = (float)net_verlet->masses[i]->normal.y;
+            vertices[i][5] = (float)net_verlet->masses[i]->normal.z;
         }
         glUseProgram(shader_program_verlet);
         glBindVertexArray(vao_verlet);
-        glBufferData(GL_ARRAY_BUFFER, net_verlet->masses.size() * 3 * sizeof(float), vertices, GL_STREAM_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glBufferData(GL_ARRAY_BUFFER, net_verlet->masses.size() * 6 * sizeof(float), vertices, GL_STREAM_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
         glDrawElements(GL_TRIANGLES, (GLsizei)net_verlet->mesh.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
