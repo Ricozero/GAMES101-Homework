@@ -106,8 +106,8 @@ void Application::init()
 
         void main()
         {
-            // fragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
-            fragColor = vertexNormal;
+            fragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+            // fragColor = vertexNormal;
         }
     )glsl";
     glShaderSource(fragment_shader_euler, 1, &fragment_shader_source_euler, NULL);
@@ -121,13 +121,13 @@ void Application::init()
     int fragment_shader_verlet = glCreateShader(GL_FRAGMENT_SHADER);
     const char *fragment_shader_source_verlet = R"glsl(
         #version 330 core
-        in vec4 vertexColor;
+        in vec4 vertexNormal;
         out vec4 fragColor;
 
         void main()
         {
             // fragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
-            fragColor = vertexColor;
+            fragColor = vec4(vertexNormal.x, vertexNormal.z, vertexNormal.y, 1.0f);
         }
     )glsl";
     glShaderSource(fragment_shader_verlet, 1, &fragment_shader_source_verlet, NULL);
