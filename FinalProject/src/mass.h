@@ -9,7 +9,7 @@ using namespace CGL;
 
 struct Mass
 {
-    Mass(Vector3D position, float mass, bool pinned) : start_position(position), position(position), last_position(position), mass(mass), pinned(pinned) {}
+    Mass(Vector3D position, float mass, bool pinned) : start_position(position), position(position), last_position(position), mass(mass), pinned(pinned), share_num(0) {}
 
     float mass;
     bool pinned;
@@ -26,6 +26,7 @@ struct Mass
 
     // for rendering
     Vector3D normal;
+    int share_num;
 };
 
 struct Spring
@@ -44,7 +45,7 @@ class Net
 public:
     vector<Mass *> masses;
     vector<Spring *> springs;
-    vector<unsigned int> mesh;
+    vector<int> mesh;
 
     Net(Vector3D min_point, Vector3D max_point, int num_rows, int num_cols, float node_mass, float k1, float k2, float k3, vector<pair<int, int>> pinned_nodes)
     {
@@ -85,6 +86,7 @@ public:
 
         // Create mesh
         for (int i = 0; i < num_rows; ++i)
+        {
             for (int j = 0; j < num_cols; ++j)
             {
                 int index = i * (num_cols + 1) + j;
@@ -95,6 +97,13 @@ public:
                 mesh.push_back(index + (num_cols + 1) + 1);
                 mesh.push_back(index + (num_cols + 1));
             }
+        }
+        for (int i = 0; i < mesh.size(); i += 3)
+        {
+            masses[mesh[i]]->share_num++;
+            masses[mesh[i + 1]]->share_num++;
+            masses[mesh[i + 2]]->share_num++;
+        }
         CalculateNormal();
     }
 
@@ -108,8 +117,9 @@ public:
 
     void CalculateNormal()
     {
-        vector<int> share_num(masses.size(), 0);
-        for (int i = 0; i < mesh.size(); i+=3)
+        for (int i = 0; i < masses.size(); ++i)
+            masses[i]->normal = Vector3D();
+        for (int i = 0; i < mesh.size(); i += 3)
         {
             Vector3D ab = masses[mesh[i + 1]]->position - masses[mesh[i]]->position;
             Vector3D ac = masses[mesh[i + 2]]->position - masses[mesh[i]]->position;
@@ -118,12 +128,9 @@ public:
             masses[mesh[i]]->normal += normal;
             masses[mesh[i + 1]]->normal += normal;
             masses[mesh[i + 2]]->normal += normal;
-            share_num[mesh[i]]++;
-            share_num[mesh[i + 1]]++;
-            share_num[mesh[i + 2]]++;
         }
         for (int i = 0; i < masses.size(); ++i)
-            masses[i]->normal = masses[i]->normal / share_num[i];
+            masses[i]->normal = masses[i]->normal / masses[i]->share_num;
     }
 
     void SimulateVerlet(float delta_t, Vector3D gravity, float damping)

@@ -90,12 +90,12 @@ void Application::init()
     glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
     glCompileShader(vertex_shader);
     int success;
-    char infoLog[512];
+    char info_log[512];
     glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
     if (!success)
     {
-        glGetShaderInfoLog(vertex_shader, 512, NULL, infoLog);
-        cout << infoLog << endl;
+        glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
+        cout << info_log << endl;
     }
 
     int fragment_shader_euler = glCreateShader(GL_FRAGMENT_SHADER);
@@ -106,8 +106,8 @@ void Application::init()
 
         void main()
         {
-            fragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
-            // fragColor = vertexNormal;
+            // fragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+            fragColor = vertexNormal;
         }
     )glsl";
     glShaderSource(fragment_shader_euler, 1, &fragment_shader_source_euler, NULL);
@@ -127,7 +127,7 @@ void Application::init()
         void main()
         {
             // fragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
-            fragColor = vec4(vertexNormal.x, vertexNormal.z, vertexNormal.y, 1.0f);
+            fragColor = vertexNormal;
         }
     )glsl";
     glShaderSource(fragment_shader_verlet, 1, &fragment_shader_source_verlet, NULL);
@@ -177,7 +177,7 @@ Application::~Application()
 void Application::create_scene()
 {
     int num_rows = 20, num_cols = 20;
-    net_euler = new Net(Vector3D(-200, -200, -100), Vector3D(200, 200, -100), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
+    net_euler = new Net(Vector3D(-200, -200, -100), Vector3D(200, 200, 0), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
     net_verlet = new Net(Vector3D(-200, -200, 100), Vector3D(200, 200, 200), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
 }
 
