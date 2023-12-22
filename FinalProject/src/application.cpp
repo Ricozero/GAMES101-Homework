@@ -32,6 +32,10 @@ void Application::init()
     glLineWidth(4);
     glColor3f(1.0, 1.0, 1.0);
 #else
+    // Initialize shaders
+    shader_euler = new Shader("../../src/shaders/common.vs", "../../src/shaders/euler.fs");
+    shader_verlet = new Shader("../../src/shaders/common.vs", "../../src/shaders/verlet.fs");
+
     // Initialize buffers
     glGenVertexArrays(1, &vao_euler);
     glGenVertexArrays(1, &vao_verlet);
@@ -50,111 +54,16 @@ void Application::init()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_verlet);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, net_verlet->mesh.size() * sizeof(int), net_verlet->mesh.data(), GL_STATIC_DRAW);
 
-    // Initialize shaders
-    int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    const char *vertex_shader_source = R"glsl(
-        #version 330 core
-        layout (location = 0) in vec3 aPos;
-        layout (location = 1) in vec3 aNormal;
-        out vec4 vertexNormal;
-
-        uniform int screenWidth;
-        uniform int screenHeight;
-        uniform mat4 view;
-        uniform float scale;
-
-        // In OpenGL, camera space is left-handed, z+ pointing from camera towards front
-        float aspectRatio = float(screenWidth) / screenHeight;
-        float t = 400, b = -t, r = t * aspectRatio, l = -r, n = -r, f = r;
-        mat4 orth = mat4(
-            2/(r-l), 0, 0, -(r+l)/(r-l),
-            0, 2/(t-b), 0, -(t+b)/(t-b),
-            0, 0, -2/(f-n), -(f+n)/(f-n),
-            0, 0, 0, 1
-        );
-
-        mat4 model = mat4(
-            scale, 0, 0, 0,
-            0, scale, 0, 0,
-            0, 0, scale, 0,
-            0, 0, 0, 1
-        );
-
-        void main()
-        {
-            vec4 pos = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-            gl_Position = orth * view * model * pos;
-            vertexNormal = vec4(aNormal.x, aNormal.y, aNormal.z, 1.0);
-        }
-    )glsl";
-    glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
-    glCompileShader(vertex_shader);
-    int success;
-    char info_log[512];
-    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
-        cout << info_log << endl;
-    }
-
-    int fragment_shader_euler = glCreateShader(GL_FRAGMENT_SHADER);
-    const char *fragment_shader_source_euler = R"glsl(
-        #version 330 core
-        in vec4 vertexNormal;
-        out vec4 fragColor;
-
-        void main()
-        {
-            // fragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
-            fragColor = vertexNormal;
-        }
-    )glsl";
-    glShaderSource(fragment_shader_euler, 1, &fragment_shader_source_euler, NULL);
-    glCompileShader(fragment_shader_euler);
-    shader_program_euler = glCreateProgram();
-    glAttachShader(shader_program_euler, vertex_shader);
-    glAttachShader(shader_program_euler, fragment_shader_euler);
-    glLinkProgram(shader_program_euler);
-    glDeleteShader(fragment_shader_euler);
-
-    int fragment_shader_verlet = glCreateShader(GL_FRAGMENT_SHADER);
-    const char *fragment_shader_source_verlet = R"glsl(
-        #version 330 core
-        in vec4 vertexNormal;
-        out vec4 fragColor;
-
-        void main()
-        {
-            // fragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
-            fragColor = vertexNormal;
-        }
-    )glsl";
-    glShaderSource(fragment_shader_verlet, 1, &fragment_shader_source_verlet, NULL);
-    glCompileShader(fragment_shader_verlet);
-    shader_program_verlet = glCreateProgram();
-    glAttachShader(shader_program_verlet, vertex_shader);
-    glAttachShader(shader_program_verlet, fragment_shader_verlet);
-    glLinkProgram(shader_program_verlet);
-    glDeleteShader(fragment_shader_verlet);
-
-    glDeleteShader(vertex_shader);
-
     // Initialize uniforms
     float view[4][4]{0};
     for (int i = 0; i < 4; ++i)
         view[i][i] = 1;
-    int view_location = glGetUniformLocation(shader_program_euler, "view");
-    glUseProgram(shader_program_euler);
-    glUniformMatrix4fv(view_location, 1, GL_TRUE, (GLfloat*)view);
-    glUseProgram(shader_program_verlet);
-    glUniformMatrix4fv(view_location, 1, GL_TRUE, (GLfloat*)view);
-
-    int scale_location = glGetUniformLocation(shader_program_euler, "scale");
-    glUseProgram(shader_program_euler);
-    glUniform1f(scale_location, 1);
-    glUseProgram(shader_program_verlet);
-    glUniform1f(scale_location, 1);
+    shader_euler->Use();
+    shader_euler->SetMatrix4f("view", (float*)view);
+    shader_euler->SetFloat("scale", 1);
+    shader_verlet->Use();
+    shader_verlet->SetMatrix4f("view", (float*)view);
+    shader_verlet->SetFloat("scale", 1);
 #endif
 
     IMGUI_CHECKVERSION();
@@ -169,6 +78,10 @@ void Application::init()
 Application::~Application()
 {
     destroy_scene();
+
+    delete shader_euler;
+    delete shader_verlet;
+
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
@@ -177,7 +90,7 @@ Application::~Application()
 void Application::create_scene()
 {
     int num_rows = 20, num_cols = 20;
-    net_euler = new Net(Vector3D(-200, -200, -100), Vector3D(200, 200, 0), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
+    net_euler = new Net(Vector3D(-200, -200, -200), Vector3D(200, 200, -100), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
     net_verlet = new Net(Vector3D(-200, -200, 100), Vector3D(200, 200, 200), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
 }
 
@@ -266,7 +179,7 @@ void Application::render_ropes()
             vertices[i][4] = (float)net_euler->masses[i]->normal.y;
             vertices[i][5] = (float)net_euler->masses[i]->normal.z;
         }
-        glUseProgram(shader_program_euler);
+        shader_euler->Use();
         glBindVertexArray(vao_euler);
         glBufferData(GL_ARRAY_BUFFER, net_euler->masses.size() * 6 * sizeof(float), vertices, GL_STREAM_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
@@ -288,7 +201,7 @@ void Application::render_ropes()
             vertices[i][4] = (float)net_verlet->masses[i]->normal.y;
             vertices[i][5] = (float)net_verlet->masses[i]->normal.z;
         }
-        glUseProgram(shader_program_verlet);
+        shader_verlet->Use();
         glBindVertexArray(vao_verlet);
         glBufferData(GL_ARRAY_BUFFER, net_verlet->masses.size() * 6 * sizeof(float), vertices, GL_STREAM_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
@@ -402,15 +315,12 @@ void Application::resize(size_t w, size_t h)
     glLoadIdentity();
     glOrtho(-half_width, half_width, -half_height, half_height, 1, 0);
 #else
-    int width_location, height_location;
-    width_location = glGetUniformLocation(shader_program_euler, "screenWidth");
-    height_location = glGetUniformLocation(shader_program_euler, "screenHeight");
-    glUseProgram(shader_program_euler);
-    glUniform1i(width_location, (GLint)screen_width);
-    glUniform1i(height_location, (GLint)screen_height);
-    glUseProgram(shader_program_verlet);
-    glUniform1i(width_location, (GLint)screen_width);
-    glUniform1i(height_location, (GLint)screen_height);
+    shader_euler->Use();
+    shader_euler->SetInt("screenWidth", (int)screen_width);
+    shader_euler->SetInt("screenHeight", (int)screen_height);
+    shader_verlet->Use();
+    shader_verlet->SetInt("screenWidth", (int)screen_width);
+    shader_verlet->SetInt("screenHeight", (int)screen_height);
 #endif
 }
 
@@ -465,11 +375,10 @@ void Application::cursor_event(float x, float y, unsigned char keys)
     view[2][0] = -sin(yaw_);
     view[2][1] = cos(yaw_) * sin(pitch_);
     view[2][2] = cos(yaw_) * cos(pitch_);
-    int view_location = glGetUniformLocation(shader_program_euler, "view");
-    glUseProgram(shader_program_euler);
-    glUniformMatrix4fv(view_location, 1, GL_TRUE, (GLfloat*)view);
-    glUseProgram(shader_program_verlet);
-    glUniformMatrix4fv(view_location, 1, GL_TRUE, (GLfloat*)view);
+    shader_euler->Use();
+    shader_euler->SetMatrix4f("view", (float*)view);
+    shader_verlet->Use();
+    shader_verlet->SetMatrix4f("view", (float*)view);
 #endif
 }
 
@@ -478,11 +387,10 @@ void Application::scroll_event(float offset_x, float offset_y)
 #ifndef USE_2D
     float sensitivity = 0.05f;
     scale *= (1 + sensitivity * offset_y);
-    int view_location = glGetUniformLocation(shader_program_euler, "scale");
-    glUseProgram(shader_program_euler);
-    glUniform1f(view_location, (GLfloat)scale);
-    glUseProgram(shader_program_verlet);
-    glUniform1f(view_location, (GLfloat)scale);
+    shader_euler->Use();
+    shader_euler->SetFloat("scale", scale);
+    shader_verlet->Use();
+    shader_verlet->SetFloat("scale", scale);
 #endif
 }
 

@@ -11,6 +11,7 @@
 #include "CGL/renderer.h"
 
 #include "mass.h"
+#include "shader.h"
 
 static const float DEFAULT_MASS = 1;
 static const float DEFAULT_K1 = 100;
@@ -92,14 +93,14 @@ private:
 
     float durations[3];
 
+    Shader *shader_euler;
+    Shader *shader_verlet;
     unsigned int vao_euler;
     unsigned int vao_verlet;
     unsigned int vbo_euler;
     unsigned int vbo_verlet;
     unsigned int ebo_euler;
     unsigned int ebo_verlet;
-    unsigned int shader_program_euler;
-    unsigned int shader_program_verlet;
     bool first_drag;
     float yaw;
     float pitch;
