@@ -14,21 +14,21 @@ void main()
         vec3 position;
         vec3 intensity;
     };
-    const light lights[2] ={
-        light(vec3(20, 20, 20), vec3(500, 500, 500)),
-        light(vec3(-20, 20, 0), vec3(500, 500, 500))
-    };
+    const light lights[1] = light[](
+        light(vec3(20, 20, 20), vec3(500, 500, 500))
+        // light(vec3(-20, 20, 0), vec3(500, 500, 500))
+    );
 
     const vec3 amb_light_intensity = vec3(10, 10, 10);
-    const vec3 eye_pos = vec3(0, 0, 500);
+    const vec3 eye_pos = vec3(0, 0, 400);
+    // TODO: 实际上传入的vertexPos是0，为什么这样才能显示正常
     vec3 view_pos = vertexPos;
     vec3 normal = vertexNormal;
 
     const float p = 150;
 
     vec3 color = vec3(0, 0, 0);
-    int i = 0;
-    for (i = 0; i < 2; ++i)
+    for (int i = 0; i < 1; ++i)
     {
         vec3 La = ka * amb_light_intensity;
         float r = length(lights[i].position - view_pos);
@@ -36,7 +36,5 @@ void main()
         vec3 Ls = ks * lights[i].intensity / (r * r) * pow(max(0.0f, dot(normal, normalize((lights[i].position - view_pos + eye_pos - view_pos) / 2))), p);
         color += La + Ld + Ls;
     }
-    // fragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
-    // fragColor = vec4(vertexNormal.x, vertexNormal.y, vertexNormal.z, 1.0f);
     fragColor = vec4(color.x, color.y, color.z, 1.0f);
 }

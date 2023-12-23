@@ -20,7 +20,40 @@ Application::Application(Config config, Viewer *viewer): config(config), viewer(
 void Application::init()
 {
     create_scene();
+    create_shaders();
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    ImGui_ImplGlfw_InitForOpenGL(viewer->get_window(), true); // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+    ImGui_ImplOpenGL3_Init();
+}
 
+Application::~Application()
+{
+    destroy_scene();
+    destroy_shaders();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void Application::create_scene()
+{
+    int num_rows = 20, num_cols = 20;
+    net_euler = new Net(Vector3D(-200, -200, -200), Vector3D(200, 200, -100), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
+    net_verlet = new Net(Vector3D(-200, -200, 100), Vector3D(200, 200, 200), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
+}
+
+void Application::destroy_scene()
+{
+    delete net_euler;
+    delete net_verlet;
+}
+
+void Application::create_shaders()
+{
 #ifdef USE_2D
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_POLYGON_SMOOTH);
@@ -33,8 +66,8 @@ void Application::init()
     glColor3f(1.0, 1.0, 1.0);
 #else
     // Initialize shaders
-    shader_euler = new Shader("../../src/shaders/common.vs", "../../src/shaders/euler.fs");
-    shader_verlet = new Shader("../../src/shaders/common.vs", "../../src/shaders/verlet.fs");
+    shader_euler = new Shader("../../src/shaders/common.vs", "../../src/shaders/blue.fs");
+    shader_verlet = new Shader("../../src/shaders/common.vs", "../../src/shaders/light.fs");
 
     // Initialize buffers
     glGenVertexArrays(1, &vao_euler);
@@ -65,39 +98,12 @@ void Application::init()
     shader_verlet->SetMatrix4f("view", (float*)view);
     shader_verlet->SetFloat("scale", 1);
 #endif
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    ImGui_ImplGlfw_InitForOpenGL(viewer->get_window(), true); // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
-    ImGui_ImplOpenGL3_Init();
 }
 
-Application::~Application()
+void Application::destroy_shaders()
 {
-    destroy_scene();
-
     delete shader_euler;
     delete shader_verlet;
-
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-}
-
-void Application::create_scene()
-{
-    int num_rows = 20, num_cols = 20;
-    net_euler = new Net(Vector3D(-200, -200, -200), Vector3D(200, 200, -100), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
-    net_verlet = new Net(Vector3D(-200, -200, 100), Vector3D(200, 200, 200), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
-}
-
-void Application::destroy_scene()
-{
-    delete net_euler;
-    delete net_verlet;
 }
 
 void Application::simulate()
@@ -212,9 +218,9 @@ void Application::render_ropes()
         glBindVertexArray(0);
     }
 
-    delete[] vertices;
-    if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDisable(GL_DEPTH_TEST);
+    if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    delete[] vertices;
 #endif
 }
 
@@ -282,6 +288,13 @@ void Application::render_config_window()
         ImGui::SameLine(); ImGui::Checkbox("Simulate##verlet", &config.simulate_verlet);
         if (ImGui::Button(("Switch to " + string(config.wireframe ? "normal" : "wireframe") + " mode").c_str()))
             config.wireframe = !config.wireframe;
+        ImGui::SameLine();
+        // TODO: 暂时无法正常工作
+        if (ImGui::Button("Reload shaders"))
+        {
+            destroy_shaders();
+            create_shaders();
+        }
 #endif
 
         ImGui::End();

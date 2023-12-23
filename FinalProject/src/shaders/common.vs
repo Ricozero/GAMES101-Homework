@@ -1,7 +1,7 @@
 #version 330 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
-out vec3 vertexPos;
+out vec3 viewPos;
 out vec3 vertexNormal;
 
 uniform int screenWidth;
@@ -28,8 +28,8 @@ mat4 model = mat4(
 
 void main()
 {
-    vec4 pos = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-    gl_Position = orth * view * model * pos;
-    vertexPos = aPos;
+    vec4 view_pos = view * model * vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    gl_Position = orth * view_pos;
+    viewPos = view_pos.xyz;
     vertexNormal = aNormal;
 }

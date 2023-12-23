@@ -69,6 +69,8 @@ public:
     void init();
     void create_scene();
     void destroy_scene();
+    void create_shaders();
+    void destroy_shaders();
     void simulate();
     void render_ropes();
     void render_config_window();
