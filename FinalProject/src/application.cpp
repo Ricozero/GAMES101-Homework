@@ -289,11 +289,11 @@ void Application::render_config_window()
         if (ImGui::Button(("Switch to " + string(config.wireframe ? "normal" : "wireframe") + " mode").c_str()))
             config.wireframe = !config.wireframe;
         ImGui::SameLine();
-        // TODO: 暂时无法正常工作
         if (ImGui::Button("Reload shaders"))
         {
             destroy_shaders();
             create_shaders();
+            resize(screen_width, screen_height);
         }
 #endif
 
