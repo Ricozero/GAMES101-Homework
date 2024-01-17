@@ -29,8 +29,8 @@ void main()
         0, 0, 0, 1
     );
 
-    gl_Position = orth * view * model * vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    gl_Position = orth * view * model * vec4(aPos, 1.0);
     vertexPos = aPos.xyz;
     vertexNormal = aNormal;
-    eyePos = (view * model * vec4(0, 0, t, 1)).xyz;
+    eyePos = (view * model * vec4(0, 0, n, 1)).xyz;
 }

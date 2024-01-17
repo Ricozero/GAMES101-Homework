@@ -37,5 +37,5 @@ void main()
         vec3 Ls = ks * lights[i].intensity / (r * r) * pow(max(0.0f, ndoth), p);
         color += La + Ld + Ls;
     }
-    fragColor = vec4(color.x, color.y, color.z, 1.0f);
+    fragColor = vec4(color, 1.0f);
 }
