@@ -20,6 +20,7 @@ static const float DEFAULT_K3 = 0.1f;
 static const float DEFAULT_DAMPING = 0.05f;
 static const Vector3D DEFAULT_GRAVITY = Vector3D(0, -1, 0);
 static const int DEFAULT_STEPS_PER_FRAME = 64;
+static const char* SHADER_NAMES[] = { "blue", "green", "normal", "phong", "pbr" };
 
 struct Config
 {
@@ -95,8 +96,8 @@ private:
 
     float durations[3];
 
-    string shader_name_euler;
-    string shader_name_verlet;
+    int shader_index_euler;
+    int shader_index_verlet;
     Shader *shader_euler;
     Shader *shader_verlet;
     unsigned int vao_euler;
