@@ -95,6 +95,8 @@ private:
 
     float durations[3];
 
+    string shader_name_euler;
+    string shader_name_verlet;
     Shader *shader_euler;
     Shader *shader_verlet;
     unsigned int vao_euler;

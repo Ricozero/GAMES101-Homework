@@ -11,6 +11,8 @@
 Application::Application(Config config, Viewer *viewer): config(config), viewer(viewer)
 {
     memset(durations, 0, sizeof(durations));
+    shader_name_euler = "phong";
+    shader_name_verlet = "phong";
     first_drag = true;
     yaw = 0;
     pitch = 0;
@@ -66,8 +68,8 @@ void Application::create_shaders()
     glColor3f(1.0, 1.0, 1.0);
 #else
     // Initialize shaders
-    shader_euler = new Shader("../../src/shaders/common.vs", "../../src/shaders/blue.fs");
-    shader_verlet = new Shader("../../src/shaders/common.vs", "../../src/shaders/light.fs");
+    shader_euler = new Shader("../../src/shaders/common.vs", ("../../src/shaders/" + shader_name_euler + ".fs").c_str());
+    shader_verlet = new Shader("../../src/shaders/common.vs", ("../../src/shaders/" + shader_name_verlet + ".fs").c_str());
 
     // Initialize buffers
     glGenVertexArrays(1, &vao_euler);
@@ -227,6 +229,7 @@ void Application::render_ropes()
 void Application::render_config_window()
 {
     const static int SLIDER_WIDTH = 150;
+    const static int COMBO_WIDTH = 100;
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -279,13 +282,23 @@ void Application::render_config_window()
         }
 
 #ifndef USE_2D
-        ImGui::Text("3D only options:");
+        ImGui::SeparatorText("3D only options");
+        const char* shader_names[] = { "blue", "green", "normal", "phong", "pbr" };
+        const char shader_names_combo[] = "blue\0green\0normal\0phong\0pbr\0\0";
         ImGui::Text("Euler:");
         ImGui::SameLine(); ImGui::Checkbox("Render##euler", &config.render_euler);
         ImGui::SameLine(); ImGui::Checkbox("Simulate##euler", &config.simulate_euler);
+        static int shader_index_euler = 3;
+        ImGui::SetNextItemWidth(COMBO_WIDTH);
+        ImGui::SameLine(); ImGui::Combo("##euler", &shader_index_euler, shader_names_combo);
+        shader_name_euler = shader_names[shader_index_euler];
         ImGui::Text("Verlet:");
         ImGui::SameLine(); ImGui::Checkbox("Render##verlet", &config.render_verlet);
         ImGui::SameLine(); ImGui::Checkbox("Simulate##verlet", &config.simulate_verlet);
+        static int shader_index_verlet = 3;
+        ImGui::SetNextItemWidth(COMBO_WIDTH);
+        ImGui::SameLine(); ImGui::Combo("##verlet", &shader_index_verlet, shader_names_combo);
+        shader_name_verlet = shader_names[shader_index_verlet];
         if (ImGui::Button(("Switch to " + string(config.wireframe ? "normal" : "wireframe") + " mode").c_str()))
             config.wireframe = !config.wireframe;
         ImGui::SameLine();
