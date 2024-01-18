@@ -109,6 +109,7 @@ private:
     bool first_drag;
     float yaw;
     float pitch;
+    float view[4][4];
     float scale;
 };
 

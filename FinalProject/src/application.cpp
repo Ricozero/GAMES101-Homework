@@ -16,6 +16,9 @@ Application::Application(Config config, Viewer *viewer): config(config), viewer(
     first_drag = true;
     yaw = 0;
     pitch = 0;
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j)
+            view[i][j] = i == j;
     scale = 1;
 }
 
@@ -90,15 +93,12 @@ void Application::create_shaders()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, net_verlet->mesh.size() * sizeof(int), net_verlet->mesh.data(), GL_STATIC_DRAW);
 
     // Initialize uniforms
-    float view[4][4]{0};
-    for (int i = 0; i < 4; ++i)
-        view[i][i] = 1;
     shader_euler->Use();
     shader_euler->SetMatrix4f("view", (float*)view);
-    shader_euler->SetFloat("scale", 1);
+    shader_euler->SetFloat("scale", scale);
     shader_verlet->Use();
     shader_verlet->SetMatrix4f("view", (float*)view);
-    shader_verlet->SetFloat("scale", 1);
+    shader_verlet->SetFloat("scale", scale);
 #endif
 }
 
@@ -399,9 +399,9 @@ void Application::cursor_event(float x, float y, unsigned char keys)
     auto radians = [](float x){ return x * 3.1415926f / 180.0f; };
     float yaw_ = radians(yaw);
     float pitch_ = -radians(pitch);
-    float view[4][4]{0};
     for (int i = 0; i < 4; ++i)
-        view[i][i] = 1;
+        for (int j = 0; j < 4; ++j)
+            view[i][j] = i == j;
     view[0][0] = cos(yaw_);
     view[0][1] = 0;
     view[0][2] = sin(yaw_);
