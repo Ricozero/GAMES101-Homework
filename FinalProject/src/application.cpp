@@ -4,6 +4,9 @@
 #include "imgui/imgui_impl_opengl3.h"
 #include "imgui/imgui_impl_glfw.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include "application.h"
 
 // #define USE_2D
@@ -26,6 +29,12 @@ void Application::init()
 {
     create_scene();
     create_shaders();
+    albedo = load_texture("../../src/textures/albedo.png");
+    normal = load_texture("../../src/textures/normal.png");
+    metallic = load_texture("../../src/textures/metallic.png");
+    roughness = load_texture("../../src/textures/roughness.png");
+    ao = load_texture("../../src/textures/ao.png");
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
@@ -39,6 +48,7 @@ Application::~Application()
 {
     destroy_scene();
     destroy_shaders();
+
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
@@ -99,6 +109,26 @@ void Application::create_shaders()
     shader_verlet->Use();
     shader_verlet->SetMatrix4f("view", (float*)view);
     shader_verlet->SetFloat("scale", scale);
+
+    // Initialize texture maps
+    if (is_euler_texture_shader())
+    {
+        shader_euler->Use();
+        shader_euler->SetInt("albedoMap", 0);
+        shader_euler->SetInt("normalMap", 1);
+        shader_euler->SetInt("metallicMap", 2);
+        shader_euler->SetInt("roughnessMap", 3);
+        shader_euler->SetInt("aoMap", 4);
+    }
+    if (is_verlet_texture_shader())
+    {
+        shader_verlet->Use();
+        shader_verlet->SetInt("albedoMap", 0);
+        shader_verlet->SetInt("normalMap", 1);
+        shader_verlet->SetInt("metallicMap", 2);
+        shader_verlet->SetInt("roughnessMap", 3);
+        shader_verlet->SetInt("aoMap", 4);
+    }
 #endif
 }
 
@@ -133,7 +163,7 @@ void Application::simulate()
     }
 }
 
-void Application::render_ropes()
+void Application::render_nets()
 {
 #ifdef USE_2D
     const Net *object;
@@ -174,7 +204,7 @@ void Application::render_ropes()
     glEnable(GL_DEPTH_TEST);
     if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     size_t sz = max(net_euler->masses.size(), net_verlet->masses.size());
-    auto vertices = new float[sz][6];
+    auto vertices = new float[sz][8];
 
     if (config.render_euler)
     {
@@ -186,14 +216,31 @@ void Application::render_ropes()
             vertices[i][3] = (float)net_euler->masses[i]->normal.x;
             vertices[i][4] = (float)net_euler->masses[i]->normal.y;
             vertices[i][5] = (float)net_euler->masses[i]->normal.z;
+            vertices[i][6] = net_euler->texture[i].first;
+            vertices[i][7] = net_euler->texture[i].second;
         }
         shader_euler->Use();
         glBindVertexArray(vao_euler);
-        glBufferData(GL_ARRAY_BUFFER, net_euler->masses.size() * 6 * sizeof(float), vertices, GL_STREAM_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+        glBufferData(GL_ARRAY_BUFFER, net_euler->masses.size() * 8 * sizeof(float), vertices, GL_STREAM_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
+        if (is_euler_texture_shader())
+        {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, albedo);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, normal);
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, metallic);
+            glActiveTexture(GL_TEXTURE3);
+            glBindTexture(GL_TEXTURE_2D, roughness);
+            glActiveTexture(GL_TEXTURE4);
+            glBindTexture(GL_TEXTURE_2D, ao);
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+            glEnableVertexAttribArray(2);
+        }
         glDrawElements(GL_TRIANGLES, (GLsizei)net_euler->mesh.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
@@ -208,14 +255,31 @@ void Application::render_ropes()
             vertices[i][3] = (float)net_verlet->masses[i]->normal.x;
             vertices[i][4] = (float)net_verlet->masses[i]->normal.y;
             vertices[i][5] = (float)net_verlet->masses[i]->normal.z;
+            vertices[i][6] = net_verlet->texture[i].first;
+            vertices[i][7] = net_verlet->texture[i].second;
         }
         shader_verlet->Use();
         glBindVertexArray(vao_verlet);
-        glBufferData(GL_ARRAY_BUFFER, net_verlet->masses.size() * 6 * sizeof(float), vertices, GL_STREAM_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+        glBufferData(GL_ARRAY_BUFFER, net_verlet->masses.size() * 8 * sizeof(float), vertices, GL_STREAM_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
+        if (is_verlet_texture_shader())
+        {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, albedo);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, normal);
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, metallic);
+            glActiveTexture(GL_TEXTURE3);
+            glBindTexture(GL_TEXTURE_2D, roughness);
+            glActiveTexture(GL_TEXTURE4);
+            glBindTexture(GL_TEXTURE_2D, ao);
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+            glEnableVertexAttribArray(2);
+        }
         glDrawElements(GL_TRIANGLES, (GLsizei)net_verlet->mesh.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
@@ -331,7 +395,7 @@ void Application::render()
     auto t0 = chrono::high_resolution_clock::now();
     simulate();
     auto t1 = chrono::high_resolution_clock::now();
-    render_ropes();
+    render_nets();
     render_config_window();
     auto t2 = chrono::high_resolution_clock::now();
     durations[0] = chrono::duration<float, milli>(t2 - t0).count();
@@ -435,4 +499,41 @@ string Application::info()
     char buf[1024];
     snprintf(buf, sizeof(buf), "%.1f/%.1f/%.1f", durations[0], durations[1], durations[2]);
     return buf;
+}
+
+unsigned int Application::load_texture(const char* path)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
+
+    return textureID;
 }

@@ -16,6 +16,7 @@ include_directories(
     ${GLFW_INCLUDE_DIRS}
     ${CGL_INCLUDE_DIRS}
     ${FREETYPE_INCLUDE_DIRS}
+    ${Stb_INCLUDE_DIR}
 )
 
 # -------------------------------------------------------------------------------

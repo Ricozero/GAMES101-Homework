@@ -46,6 +46,7 @@ public:
     vector<Mass *> masses;
     vector<Spring *> springs;
     vector<int> mesh;
+    vector<pair<float, float>> texture;
 
     Net(Vector3D min_point, Vector3D max_point, int num_rows, int num_cols, float node_mass, float k1, float k2, float k3, vector<pair<int, int>> pinned_nodes)
     {
@@ -105,6 +106,11 @@ public:
             masses[mesh[i + 2]]->share_num++;
         }
         CalculateNormal();
+
+        // Generate texture coordinates
+        for (int i = 0; i <= num_rows; ++i)
+            for (int j = 0; j <= num_cols; ++j)
+                texture.push_back({float(j) / num_cols, float(i) / num_rows});
     }
 
     ~Net()

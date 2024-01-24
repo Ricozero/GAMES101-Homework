@@ -20,7 +20,7 @@ static const float DEFAULT_K3 = 0.1f;
 static const float DEFAULT_DAMPING = 0.05f;
 static const Vector3D DEFAULT_GRAVITY = Vector3D(0, -1, 0);
 static const int DEFAULT_STEPS_PER_FRAME = 64;
-static const char* SHADER_NAMES[] = { "blue", "green", "normal", "phong", "pbr" };
+static const char* SHADER_NAMES[] = { "blue", "green", "normal", "phong", "phong_tex", "pbr", "pbr_tex" };
 
 struct Config
 {
@@ -73,13 +73,16 @@ public:
     void create_shaders();
     void destroy_shaders();
     void simulate();
-    void render_ropes();
+    void render_nets();
     void render_config_window();
     void render();
     void resize(size_t w, size_t h);
     void mouse_button_event(int button, int event);
     void cursor_event(float x, float y, unsigned char keys);
     void scroll_event(float offset_x, float offset_y);
+    unsigned int load_texture(const char* path);
+    bool is_euler_texture_shader() {return shader_index_euler == 4 || shader_index_euler == 6;}
+    bool is_verlet_texture_shader() {return shader_index_verlet == 4 || shader_index_verlet == 6;}
 
     string name() { return "Rope Simulator"; }
     string info();
@@ -106,6 +109,11 @@ private:
     unsigned int vbo_verlet;
     unsigned int ebo_euler;
     unsigned int ebo_verlet;
+    unsigned int albedo;
+    unsigned int normal;
+    unsigned int metallic;
+    unsigned int roughness;
+    unsigned int ao;
     bool first_drag;
     float yaw;
     float pitch;

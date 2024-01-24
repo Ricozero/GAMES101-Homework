@@ -1,9 +1,8 @@
 #version 330 core
-out vec4 fragColor;
-// in vec2 TexCoords;
 in vec3 vertexPos;
 in vec3 vertexNormal;
 in vec3 eyePos;
+out vec4 fragColor;
 
 // material parameters
 const vec3 albedo = vec3(1.0f, 1.0f, 1.0f);

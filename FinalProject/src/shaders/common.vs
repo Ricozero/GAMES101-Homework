@@ -1,8 +1,10 @@
 #version 330 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aTexCoords;
 out vec3 vertexPos;
 out vec3 vertexNormal;
+out vec2 texCoords;
 out vec3 eyePos;
 
 uniform int screenWidth;
@@ -31,6 +33,6 @@ void main()
 
     gl_Position = orth * view * model * vec4(aPos, 1.0);
     vertexPos = aPos.xyz;
-    vertexNormal = aNormal;
+    vertexNormal = aNormal; // TODO: 加入材质后应为normalMatrix * aNormal
     eyePos = (view * model * vec4(0, 0, n, 1)).xyz;
 }
