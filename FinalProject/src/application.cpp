@@ -13,6 +13,8 @@
 
 Application::Application(Config config, Viewer *viewer): config(config), viewer(viewer)
 {
+    rows = 20;
+    cols = 20;
     memset(durations, 0, sizeof(durations));
     shader_index_euler = 4;
     shader_index_verlet = 4;
@@ -25,6 +27,9 @@ Application::Application(Config config, Viewer *viewer): config(config), viewer(
     scale = 1;
     gpu_simulation = false;
     shader_compute = nullptr;
+    compute_work_group[0] = 1024;
+    compute_work_group[1] = 1024;
+    compute_work_group[2] = 1;
 }
 
 void Application::init()
@@ -58,9 +63,8 @@ Application::~Application()
 
 void Application::create_scene()
 {
-    int num_rows = 10, num_cols = 10;
-    net_euler = new Net(Vector3D(-200, -200, -200), Vector3D(200, 200, -100), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
-    net_verlet = new Net(Vector3D(-200, -200, 100), Vector3D(200, 200, 200), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
+    net_euler = new Net(Vector3D(-200, -200, -200), Vector3D(200, 200, -100), rows, cols, config.mass, config.k1, config.k2, config.k3, {{rows, 0}, {rows, cols}});
+    net_verlet = new Net(Vector3D(-200, -200, 100), Vector3D(200, 200, 200), rows, cols, config.mass, config.k1, config.k2, config.k3, {{rows, 0}, {rows, cols}});
 }
 
 void Application::destroy_scene()
@@ -135,6 +139,20 @@ void Application::create_shaders()
     // GPU computing
     if (gpu_simulation)
     {
+        int max_cwg_count[3];
+        int max_cwg_size[3];
+        int max_cwg_invocations;
+        for (int i = 0; i < 3; ++i)
+        {
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, i, &max_cwg_count[i]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, i, &max_cwg_size[i]);
+        }
+        glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &max_cwg_invocations);
+        printf("Max work groups: (%d, %d, %d)\n", max_cwg_count[0], max_cwg_count[1], max_cwg_count[2]);
+        printf("Max work group size: (%d, %d, %d)\n", max_cwg_size[0], max_cwg_size[1], max_cwg_size[2]);
+        printf("Max invocation number in a single local work group: %d\n", max_cwg_invocations);
+        printf("Work groups: (%d, %d, %d)\n", compute_work_group[0], compute_work_group[1], compute_work_group[2]);
+
         shader_euler->Use();
         shader_euler->SetInt("gpuSimulation", 1);
         shader_verlet->Use();
@@ -200,7 +218,7 @@ void Application::simulate()
     if (gpu_simulation)
     {
         shader_compute->Use();
-        glDispatchCompute((GLuint)screen_width, (GLuint)screen_height, 1);
+        glDispatchCompute((GLuint)compute_work_group[0], (GLuint)compute_work_group[1], (GLuint)compute_work_group[2]);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         return;
     }
@@ -430,6 +448,9 @@ void Application::render_config_window()
             create_shaders();
             resize(screen_width, screen_height);
         }
+
+        ImGui::SetNextItemWidth(SLIDER_WIDTH / 2);
+        ImGui::InputInt2("Rows/Cols (needs restart)", &rows);
 
         auto concat = [](const char* strings[], int size) {
             static vector<char> tmp;

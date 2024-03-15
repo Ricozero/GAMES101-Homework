@@ -50,57 +50,57 @@ public:
     vector<int> mesh;
     vector<pair<float, float>> texture;
 
-    Net(Vector3D min_point, Vector3D max_point, int num_rows, int num_cols, float node_mass, float k1, float k2, float k3, vector<pair<int, int>> pinned_nodes)
+    Net(Vector3D min_point, Vector3D max_point, int rows, int cols, float node_mass, float k1, float k2, float k3, vector<pair<int, int>> pinned_nodes)
     {
-        rows = num_rows;
-        cols = num_cols;
+        this->rows = rows;
+        this->cols = cols;
         // Create masses
-        double grid_x = (max_point.x - min_point.x) / num_cols;
-        double grid_y = (max_point.y - min_point.y) / num_rows;
-        double grid_z = (max_point.z - min_point.z) / num_rows;
-        for (int i = 0; i <= num_rows; ++i)
-            for (int j = 0; j <= num_cols; ++j)
+        double grid_x = (max_point.x - min_point.x) / cols;
+        double grid_y = (max_point.y - min_point.y) / rows;
+        double grid_z = (max_point.z - min_point.z) / rows;
+        for (int i = 0; i <= rows; ++i)
+            for (int j = 0; j <= cols; ++j)
                 masses.push_back(new Mass(min_point + Vector3D(j * grid_x, i * grid_y, i * grid_z), node_mass, false));
         for (auto x : pinned_nodes)
-            masses[x.first * (num_cols + 1) + x.second]->pinned = true;
+            masses[x.first * (cols + 1) + x.second]->pinned = true;
 
         // Horizontal - Structural
-        for (int i = 0; i <= num_rows; ++i)
-            for (int j = 0; j < num_cols; ++j)
-                springs.push_back(new Spring(masses[i * (num_cols + 1) + j], masses[i * (num_cols + 1) + j + 1], k1));
+        for (int i = 0; i <= rows; ++i)
+            for (int j = 0; j < cols; ++j)
+                springs.push_back(new Spring(masses[i * (cols + 1) + j], masses[i * (cols + 1) + j + 1], k1));
         // Vertical - Structural
-        for (int i = 0; i < num_rows; ++i)
-            for (int j = 0; j <= num_cols; ++j)
-                springs.push_back(new Spring(masses[i * (num_cols + 1) + j], masses[(i + 1) * (num_cols + 1) + j], k1));
+        for (int i = 0; i < rows; ++i)
+            for (int j = 0; j <= cols; ++j)
+                springs.push_back(new Spring(masses[i * (cols + 1) + j], masses[(i + 1) * (cols + 1) + j], k1));
         // Diagonal - Shear
-        for (int i = 0; i < num_rows; ++i)
-            for (int j = num_cols; j > 0; --j)
-                springs.push_back(new Spring(masses[i * (num_cols + 1) + j], masses[(i + 1) * (num_cols + 1) + j - 1], k2));
+        for (int i = 0; i < rows; ++i)
+            for (int j = cols; j > 0; --j)
+                springs.push_back(new Spring(masses[i * (cols + 1) + j], masses[(i + 1) * (cols + 1) + j - 1], k2));
         // Antidiagonal - Shear
-        for (int i = 0; i < num_rows; ++i)
-            for (int j = 0; j < num_cols; ++j)
-                springs.push_back(new Spring(masses[i * (num_cols + 1) + j], masses[(i + 1) * (num_cols + 1) + j + 1], k2));
+        for (int i = 0; i < rows; ++i)
+            for (int j = 0; j < cols; ++j)
+                springs.push_back(new Spring(masses[i * (cols + 1) + j], masses[(i + 1) * (cols + 1) + j + 1], k2));
         // Horizontal - Flexion
-        for (int i = 0; i <= num_rows; ++i)
-            for (int j = 0; j < num_cols - 1; ++j)
-                springs.push_back(new Spring(masses[i * (num_cols + 1) + j], masses[i * (num_cols + 1) + j + 2], k3));
+        for (int i = 0; i <= rows; ++i)
+            for (int j = 0; j < cols - 1; ++j)
+                springs.push_back(new Spring(masses[i * (cols + 1) + j], masses[i * (cols + 1) + j + 2], k3));
         // Vertical - Flexion
-        for (int i = 0; i < num_rows - 1; ++i)
-            for (int j = 0; j <= num_cols; ++j)
-                springs.push_back(new Spring(masses[i * (num_cols + 1) + j], masses[(i + 2) * (num_cols + 1) + j], k3));
+        for (int i = 0; i < rows - 1; ++i)
+            for (int j = 0; j <= cols; ++j)
+                springs.push_back(new Spring(masses[i * (cols + 1) + j], masses[(i + 2) * (cols + 1) + j], k3));
 
         // Create mesh
-        for (int i = 0; i < num_rows; ++i)
+        for (int i = 0; i < rows; ++i)
         {
-            for (int j = 0; j < num_cols; ++j)
+            for (int j = 0; j < cols; ++j)
             {
-                int index = i * (num_cols + 1) + j;
+                int index = i * (cols + 1) + j;
                 mesh.push_back(index);
                 mesh.push_back(index + 1);
-                mesh.push_back(index + (num_cols + 1) + 1);
+                mesh.push_back(index + (cols + 1) + 1);
                 mesh.push_back(index);
-                mesh.push_back(index + (num_cols + 1) + 1);
-                mesh.push_back(index + (num_cols + 1));
+                mesh.push_back(index + (cols + 1) + 1);
+                mesh.push_back(index + (cols + 1));
             }
         }
         for (int i = 0; i < mesh.size(); i += 3)
@@ -112,9 +112,9 @@ public:
         CalculateNormal();
 
         // Generate texture coordinates
-        for (int i = 0; i <= num_rows; ++i)
-            for (int j = 0; j <= num_cols; ++j)
-                texture.push_back({float(j) / num_cols, float(i) / num_rows});
+        for (int i = 0; i <= rows; ++i)
+            for (int j = 0; j <= cols; ++j)
+                texture.push_back({float(j) / cols, float(i) / rows});
     }
 
     ~Net()

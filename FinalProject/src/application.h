@@ -93,6 +93,8 @@ private:
     size_t screen_width;
     size_t screen_height;
 
+    int rows;
+    int cols;
     Net *net_euler;
     Net *net_verlet;
 
@@ -122,6 +124,7 @@ private:
     bool gpu_simulation;
     Shader *shader_compute;
     unsigned int ssbo;
+    int compute_work_group[3];
 };
 
 #endif // APPLICATION_H
