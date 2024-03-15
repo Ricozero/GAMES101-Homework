@@ -43,6 +43,8 @@ struct Spring
 class Net
 {
 public:
+    int rows;
+    int cols;
     vector<Mass *> masses;
     vector<Spring *> springs;
     vector<int> mesh;
@@ -50,6 +52,8 @@ public:
 
     Net(Vector3D min_point, Vector3D max_point, int num_rows, int num_cols, float node_mass, float k1, float k2, float k3, vector<pair<int, int>> pinned_nodes)
     {
+        rows = num_rows;
+        cols = num_cols;
         // Create masses
         double grid_x = (max_point.x - min_point.x) / num_cols;
         double grid_y = (max_point.y - min_point.y) / num_rows;

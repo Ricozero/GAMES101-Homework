@@ -22,7 +22,7 @@ public:
         ifstream fShaderFile;
         vShaderFile.exceptions (ifstream::failbit | ifstream::badbit);
         fShaderFile.exceptions (ifstream::failbit | ifstream::badbit);
-        try 
+        try
         {
             vShaderFile.open(vertexPath);
             fShaderFile.open(fragmentPath);
@@ -56,6 +56,35 @@ public:
         CheckCompileErrors(ID, "PROGRAM");
         glDeleteShader(vertex);
         glDeleteShader(fragment);
+    }
+    Shader(const char* computePath)
+    {
+        std::string computeCode;
+        std::ifstream cShaderFile;
+        cShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        try
+        {
+            cShaderFile.open(computePath);
+            std::stringstream cShaderStream;
+            cShaderStream << cShaderFile.rdbuf();
+            cShaderFile.close();
+            computeCode = cShaderStream.str();
+        }
+        catch (std::ifstream::failure& e)
+        {
+            std::cout << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: " << e.what() << std::endl;
+        }
+        const char* cShaderCode = computeCode.c_str();
+        unsigned int compute;
+        compute = glCreateShader(GL_COMPUTE_SHADER);
+        glShaderSource(compute, 1, &cShaderCode, NULL);
+        glCompileShader(compute);
+        CheckCompileErrors(compute, "COMPUTE");
+        ID = glCreateProgram();
+        glAttachShader(ID, compute);
+        glLinkProgram(ID);
+        CheckCompileErrors(ID, "PROGRAM");
+        glDeleteShader(compute);
     }
     void Use() const
     { 

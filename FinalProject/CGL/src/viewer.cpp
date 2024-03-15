@@ -74,7 +74,7 @@ void Viewer::init(int width, int height) {
 
   // set context
   glfwMakeContextCurrent( window );
-  glfwSwapInterval(1);
+  glfwSwapInterval(0);
 
   // framebuffer event callbacks
   glfwSetFramebufferSizeCallback( window, resize_callback );

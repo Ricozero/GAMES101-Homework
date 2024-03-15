@@ -81,8 +81,7 @@ public:
     void cursor_event(float x, float y, unsigned char keys);
     void scroll_event(float offset_x, float offset_y);
     unsigned int load_texture(const char* path);
-    bool is_euler_texture_shader() {return shader_index_euler == 4 || shader_index_euler == 6;}
-    bool is_verlet_texture_shader() {return shader_index_verlet == 4 || shader_index_verlet == 6;}
+    static bool is_texture_shader(int index) { return index == 4 || index == 6; }
 
     string name() { return "Rope Simulator"; }
     string info();
@@ -119,6 +118,10 @@ private:
     float pitch;
     float view[4][4];
     float scale;
+
+    bool gpu_simulation;
+    Shader *shader_compute;
+    unsigned int ssbo;
 };
 
 #endif // APPLICATION_H

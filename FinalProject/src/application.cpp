@@ -23,6 +23,8 @@ Application::Application(Config config, Viewer *viewer): config(config), viewer(
         for (int j = 0; j < 4; ++j)
             view[i][j] = i == j;
     scale = 1;
+    gpu_simulation = false;
+    shader_compute = nullptr;
 }
 
 void Application::init()
@@ -56,7 +58,7 @@ Application::~Application()
 
 void Application::create_scene()
 {
-    int num_rows = 20, num_cols = 20;
+    int num_rows = 10, num_cols = 10;
     net_euler = new Net(Vector3D(-200, -200, -200), Vector3D(200, 200, -100), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
     net_verlet = new Net(Vector3D(-200, -200, 100), Vector3D(200, 200, 200), num_rows, num_cols, config.mass, config.k1, config.k2, config.k3, {{num_rows, 0}, {num_rows, num_cols}});
 }
@@ -111,7 +113,7 @@ void Application::create_shaders()
     shader_verlet->SetFloat("scale", scale);
 
     // Initialize texture maps
-    if (is_euler_texture_shader())
+    if (is_texture_shader(shader_index_euler))
     {
         shader_euler->Use();
         shader_euler->SetInt("albedoMap", 0);
@@ -120,7 +122,7 @@ void Application::create_shaders()
         shader_euler->SetInt("roughnessMap", 3);
         shader_euler->SetInt("aoMap", 4);
     }
-    if (is_verlet_texture_shader())
+    if (is_texture_shader(shader_index_verlet))
     {
         shader_verlet->Use();
         shader_verlet->SetInt("albedoMap", 0);
@@ -129,6 +131,56 @@ void Application::create_shaders()
         shader_verlet->SetInt("roughnessMap", 3);
         shader_verlet->SetInt("aoMap", 4);
     }
+
+    // GPU computing
+    if (gpu_simulation)
+    {
+        shader_euler->Use();
+        shader_euler->SetInt("gpuSimulation", 1);
+        shader_verlet->Use();
+        shader_verlet->SetInt("gpuSimulation", 1);
+
+        shader_compute = new Shader("../../src/shaders/compute.cs");
+        glGenBuffers(1, &ssbo);
+        // For SSBO vec4 alignment
+        const int len = 8;
+        size_t size = (net_euler->masses.size() + net_verlet->masses.size()) * len;
+        float *vertices = new float[size];
+        for (int i = 0; i < net_euler->masses.size(); ++i)
+        {
+            vertices[i * len] = (float)net_euler->masses[i]->position.x;
+            vertices[i * len + 1] = (float)net_euler->masses[i]->position.y;
+            vertices[i * len + 2] = (float)net_euler->masses[i]->position.z;
+            vertices[i * len + 3] = 0;
+            vertices[i * len + 4] = (float)net_euler->masses[i]->normal.x;
+            vertices[i * len + 5] = (float)net_euler->masses[i]->normal.y;
+            vertices[i * len + 6] = (float)net_euler->masses[i]->normal.z;
+            vertices[i * len + 7] = 0;
+        }
+        size_t offset = net_euler->masses.size() * len;
+        for (int i = 0; i < net_verlet->masses.size(); ++i)
+        {
+            vertices[offset + i * len] = (float)net_verlet->masses[i]->position.x;
+            vertices[offset + i * len + 1] = (float)net_verlet->masses[i]->position.y;
+            vertices[offset + i * len + 2] = (float)net_verlet->masses[i]->position.z;
+            vertices[offset + i * len + 3] = 0;
+            vertices[offset + i * len + 4] = (float)net_verlet->masses[i]->normal.x;
+            vertices[offset + i * len + 5] = (float)net_verlet->masses[i]->normal.y;
+            vertices[offset + i * len + 6] = (float)net_verlet->masses[i]->normal.z;
+            vertices[offset + i * len + 7] = 0;
+        }
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, size * sizeof(float), vertices, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+        delete[] vertices;
+    }
+    else
+    {
+        shader_euler->Use();
+        shader_euler->SetInt("gpuSimulation", 0);
+        shader_verlet->Use();
+        shader_verlet->SetInt("gpuSimulation", 0);
+    }
 #endif
 }
 
@@ -136,10 +188,23 @@ void Application::destroy_shaders()
 {
     delete shader_euler;
     delete shader_verlet;
+    if (shader_compute)
+    {
+        delete shader_compute;
+        shader_compute = nullptr;
+    }
 }
 
 void Application::simulate()
 {
+    if (gpu_simulation)
+    {
+        shader_compute->Use();
+        glDispatchCompute((GLuint)screen_width, (GLuint)screen_height, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        return;
+    }
+
     if (config.realtime)
     {
         static auto t_old = chrono::high_resolution_clock::now();
@@ -204,7 +269,8 @@ void Application::render_nets()
     glEnable(GL_DEPTH_TEST);
     if (config.wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     size_t sz = max(net_euler->masses.size(), net_verlet->masses.size());
-    auto vertices = new float[sz][8];
+    const int len = 9;
+    auto vertices = new float[sz][9];
 
     if (config.render_euler)
     {
@@ -216,17 +282,20 @@ void Application::render_nets()
             vertices[i][3] = (float)net_euler->masses[i]->normal.x;
             vertices[i][4] = (float)net_euler->masses[i]->normal.y;
             vertices[i][5] = (float)net_euler->masses[i]->normal.z;
-            vertices[i][6] = net_euler->texture[i].first;
-            vertices[i][7] = net_euler->texture[i].second;
+            vertices[i][6] = (float)i;
+            vertices[i][7] = net_euler->texture[i].first;
+            vertices[i][8] = net_euler->texture[i].second;
         }
         shader_euler->Use();
         glBindVertexArray(vao_euler);
-        glBufferData(GL_ARRAY_BUFFER, net_euler->masses.size() * 8 * sizeof(float), vertices, GL_STREAM_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+        glBufferData(GL_ARRAY_BUFFER, net_euler->masses.size() * len * sizeof(float), vertices, GL_STREAM_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, len * sizeof(float), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(6 * sizeof(float)));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
-        if (is_euler_texture_shader())
+        glEnableVertexAttribArray(2);
+        if (is_texture_shader(shader_index_euler))
         {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, albedo);
@@ -238,9 +307,10 @@ void Application::render_nets()
             glBindTexture(GL_TEXTURE_2D, roughness);
             glActiveTexture(GL_TEXTURE4);
             glBindTexture(GL_TEXTURE_2D, ao);
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-            glEnableVertexAttribArray(2);
+            glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(7 * sizeof(float)));
+            glEnableVertexAttribArray(3);
         }
+        if (gpu_simulation) shader_euler->SetInt("indexOffset", 0);
         glDrawElements(GL_TRIANGLES, (GLsizei)net_euler->mesh.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
@@ -255,17 +325,20 @@ void Application::render_nets()
             vertices[i][3] = (float)net_verlet->masses[i]->normal.x;
             vertices[i][4] = (float)net_verlet->masses[i]->normal.y;
             vertices[i][5] = (float)net_verlet->masses[i]->normal.z;
-            vertices[i][6] = net_verlet->texture[i].first;
-            vertices[i][7] = net_verlet->texture[i].second;
+            vertices[i][6] = (float)i;
+            vertices[i][7] = net_verlet->texture[i].first;
+            vertices[i][8] = net_verlet->texture[i].second;
         }
         shader_verlet->Use();
         glBindVertexArray(vao_verlet);
-        glBufferData(GL_ARRAY_BUFFER, net_verlet->masses.size() * 8 * sizeof(float), vertices, GL_STREAM_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+        glBufferData(GL_ARRAY_BUFFER, net_verlet->masses.size() * len * sizeof(float), vertices, GL_STREAM_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, len * sizeof(float), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(6 * sizeof(float)));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
-        if (is_verlet_texture_shader())
+        glEnableVertexAttribArray(2);
+        if (is_texture_shader(shader_index_verlet))
         {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, albedo);
@@ -277,9 +350,10 @@ void Application::render_nets()
             glBindTexture(GL_TEXTURE_2D, roughness);
             glActiveTexture(GL_TEXTURE4);
             glBindTexture(GL_TEXTURE_2D, ao);
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-            glEnableVertexAttribArray(2);
+            glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(7 * sizeof(float)));
+            glEnableVertexAttribArray(3);
         }
+        if (gpu_simulation) shader_verlet->SetInt("indexOffset", (int)net_euler->masses.size());
         glDrawElements(GL_TRIANGLES, (GLsizei)net_verlet->mesh.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
@@ -347,6 +421,16 @@ void Application::render_config_window()
 
 #ifndef USE_2D
         ImGui::SeparatorText("3D only options");
+
+        if (ImGui::Checkbox("GPU Simulation (restart immediately)##gpu", &gpu_simulation))
+        {
+            destroy_scene();
+            destroy_shaders();
+            create_scene();
+            create_shaders();
+            resize(screen_width, screen_height);
+        }
+
         auto concat = [](const char* strings[], int size) {
             static vector<char> tmp;
             for (int i = 0; i < size; ++i)
