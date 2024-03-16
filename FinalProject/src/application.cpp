@@ -313,21 +313,20 @@ void Application::render_nets()
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
         glEnableVertexAttribArray(2);
-        if (is_texture_shader(shader_index_euler))
-        {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, albedo);
-            glActiveTexture(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, normal);
-            glActiveTexture(GL_TEXTURE2);
-            glBindTexture(GL_TEXTURE_2D, metallic);
-            glActiveTexture(GL_TEXTURE3);
-            glBindTexture(GL_TEXTURE_2D, roughness);
-            glActiveTexture(GL_TEXTURE4);
-            glBindTexture(GL_TEXTURE_2D, ao);
-            glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(7 * sizeof(float)));
-            glEnableVertexAttribArray(3);
-        }
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, albedo);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, normal);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, metallic);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, roughness);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, ao);
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(7 * sizeof(float)));
+        glEnableVertexAttribArray(3);
+
         if (gpu_simulation) shader_euler->SetInt("indexOffset", 0);
         glDrawElements(GL_TRIANGLES, (GLsizei)net_euler->mesh.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
@@ -356,21 +355,20 @@ void Application::render_nets()
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
         glEnableVertexAttribArray(2);
-        if (is_texture_shader(shader_index_verlet))
-        {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, albedo);
-            glActiveTexture(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, normal);
-            glActiveTexture(GL_TEXTURE2);
-            glBindTexture(GL_TEXTURE_2D, metallic);
-            glActiveTexture(GL_TEXTURE3);
-            glBindTexture(GL_TEXTURE_2D, roughness);
-            glActiveTexture(GL_TEXTURE4);
-            glBindTexture(GL_TEXTURE_2D, ao);
-            glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(7 * sizeof(float)));
-            glEnableVertexAttribArray(3);
-        }
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, albedo);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, normal);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, metallic);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, roughness);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, ao);
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(7 * sizeof(float)));
+        glEnableVertexAttribArray(3);
+
         if (gpu_simulation) shader_verlet->SetInt("indexOffset", (int)net_euler->masses.size());
         glDrawElements(GL_TRIANGLES, (GLsizei)net_verlet->mesh.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
