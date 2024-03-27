@@ -156,35 +156,30 @@ void Application::create_shaders()
         shader_verlet->SetInt("gpuSimulation", 1);
 
         shader_compute = new Shader("../../src/shaders/compute.cs");
+
+        // Shared SSBO
         glGenBuffers(1, &ssbo);
-        const int len = 8; // For SSBO vec4 alignment
-        size_t size = (net_euler->masses.size() + net_verlet->masses.size()) * len;
-        float *vertices = new float[size];
-        for (int i = 0; i < net_euler->masses.size(); ++i)
+        struct Vertex
         {
-            vertices[i * len] = (float)net_euler->masses[i]->position.x;
-            vertices[i * len + 1] = (float)net_euler->masses[i]->position.y;
-            vertices[i * len + 2] = (float)net_euler->masses[i]->position.z;
-            vertices[i * len + 3] = 0;
-            vertices[i * len + 4] = (float)net_euler->masses[i]->normal.x;
-            vertices[i * len + 5] = (float)net_euler->masses[i]->normal.y;
-            vertices[i * len + 6] = (float)net_euler->masses[i]->normal.z;
-            vertices[i * len + 7] = 0;
-        }
-        size_t offset = net_euler->masses.size() * len;
-        for (int i = 0; i < net_verlet->masses.size(); ++i)
-        {
-            vertices[offset + i * len] = (float)net_verlet->masses[i]->position.x;
-            vertices[offset + i * len + 1] = (float)net_verlet->masses[i]->position.y;
-            vertices[offset + i * len + 2] = (float)net_verlet->masses[i]->position.z;
-            vertices[offset + i * len + 3] = 0;
-            vertices[offset + i * len + 4] = (float)net_verlet->masses[i]->normal.x;
-            vertices[offset + i * len + 5] = (float)net_verlet->masses[i]->normal.y;
-            vertices[offset + i * len + 6] = (float)net_verlet->masses[i]->normal.z;
-            vertices[offset + i * len + 7] = 0;
-        }
+            alignas(16) float position[3];
+            alignas(16) float normal[3];
+            Vertex& operator=(const Mass& mass)
+            {
+                position[0] = (float)mass.position.x;
+                position[1] = (float)mass.position.y;
+                position[2] = (float)mass.position.z;
+                normal[0] = (float)mass.normal.x;
+                normal[1] = (float)mass.normal.y;
+                normal[2] = (float)mass.normal.z;
+                return *this;
+            }
+        };
+        size_t size = net_euler->masses.size() + net_verlet->masses.size();
+        Vertex* vertices = new Vertex[size];
+        for (int i = 0; i < net_euler->masses.size(); ++i) vertices[i] = *net_euler->masses[i];
+        for (int i = 0; i < net_verlet->masses.size(); ++i) vertices[i + net_euler->masses.size()] = *net_verlet->masses[i];
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, size * sizeof(float), vertices, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, size * sizeof(Vertex), vertices, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
         delete[] vertices;
     }

@@ -3,16 +3,14 @@ layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in float aIndex;
 layout (location = 3) in vec2 aTexCoords;
-struct vertex
+struct Vertex
 {
     vec3 position;
-    float padding;
     vec3 normal;
-    float padding2;
 };
 layout (std430, binding = 0) buffer net
 {
-    vertex vertices[];
+    Vertex vertices[];
 };
 out vec3 vertexPos;
 out vec3 vertexNormal;
@@ -31,7 +29,7 @@ void main()
     vec3 pos, normal;
     if (bool(gpuSimulation))
     {
-        vertex v = vertices[int(aIndex) + indexOffset];
+        Vertex v = vertices[int(aIndex) + indexOffset];
         pos = v.position;
         normal = v.normal;
     }

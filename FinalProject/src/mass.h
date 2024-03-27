@@ -9,12 +9,11 @@ using namespace CGL;
 
 struct Mass
 {
-    Mass(Vector3D position, float mass, bool pinned) : start_position(position), position(position), last_position(position), mass(mass), pinned(pinned), share_num(0) {}
+    Mass(Vector3D position, float mass, bool pinned) : position(position), last_position(position), mass(mass), pinned(pinned), share_num(0) {}
 
     float mass;
     bool pinned;
 
-    Vector3D start_position;
     Vector3D position;
 
     // explicit Verlet integration
