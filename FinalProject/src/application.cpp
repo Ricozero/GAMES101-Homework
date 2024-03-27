@@ -35,12 +35,12 @@ Application::Application(Config config, Viewer *viewer): config(config), viewer(
 void Application::init()
 {
     create_scene();
-    create_shaders();
     albedo = load_texture("../../src/textures/albedo.png");
     normal = load_texture("../../src/textures/normal.png");
     metallic = load_texture("../../src/textures/metallic.png");
     roughness = load_texture("../../src/textures/roughness.png");
     ao = load_texture("../../src/textures/ao.png");
+    create_shaders();
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -86,11 +86,10 @@ void Application::create_shaders()
     glLineWidth(4);
     glColor3f(1.0, 1.0, 1.0);
 #else
-    // Initialize shaders
+    // Rendering
     shader_euler = new Shader("../../src/shaders/common.vs", ("../../src/shaders/" + string(SHADER_NAMES[shader_index_euler]) + ".fs").c_str());
     shader_verlet = new Shader("../../src/shaders/common.vs", ("../../src/shaders/" + string(SHADER_NAMES[shader_index_verlet]) + ".fs").c_str());
 
-    // Initialize buffers
     glGenVertexArrays(1, &vao_euler);
     glGenVertexArrays(1, &vao_verlet);
     glGenBuffers(1, &vbo_euler);
@@ -108,7 +107,6 @@ void Application::create_shaders()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_verlet);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, net_verlet->mesh.size() * sizeof(int), net_verlet->mesh.data(), GL_STATIC_DRAW);
 
-    // Initialize uniforms
     shader_euler->Use();
     shader_euler->SetMatrix4f("view", (float*)view);
     shader_euler->SetFloat("scale", scale);
@@ -116,7 +114,6 @@ void Application::create_shaders()
     shader_verlet->SetMatrix4f("view", (float*)view);
     shader_verlet->SetFloat("scale", scale);
 
-    // Initialize texture maps
     if (is_texture_shader(shader_index_euler))
     {
         shader_euler->Use();
@@ -160,8 +157,7 @@ void Application::create_shaders()
 
         shader_compute = new Shader("../../src/shaders/compute.cs");
         glGenBuffers(1, &ssbo);
-        // For SSBO vec4 alignment
-        const int len = 8;
+        const int len = 8; // For SSBO vec4 alignment
         size_t size = (net_euler->masses.size() + net_verlet->masses.size()) * len;
         float *vertices = new float[size];
         for (int i = 0; i < net_euler->masses.size(); ++i)
@@ -305,15 +301,17 @@ void Application::render_nets()
             vertices[i][8] = net_euler->texture[i].second;
         }
         shader_euler->Use();
+        if (gpu_simulation) shader_euler->SetInt("indexOffset", 0);
         glBindVertexArray(vao_euler);
         glBufferData(GL_ARRAY_BUFFER, net_euler->masses.size() * len * sizeof(float), vertices, GL_STREAM_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)0);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, len * sizeof(float), (void*)(3 * sizeof(float)));
         glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(6 * sizeof(float)));
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(7 * sizeof(float)));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
         glEnableVertexAttribArray(2);
-
+        glEnableVertexAttribArray(3);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, albedo);
         glActiveTexture(GL_TEXTURE1);
@@ -324,10 +322,6 @@ void Application::render_nets()
         glBindTexture(GL_TEXTURE_2D, roughness);
         glActiveTexture(GL_TEXTURE4);
         glBindTexture(GL_TEXTURE_2D, ao);
-        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(7 * sizeof(float)));
-        glEnableVertexAttribArray(3);
-
-        if (gpu_simulation) shader_euler->SetInt("indexOffset", 0);
         glDrawElements(GL_TRIANGLES, (GLsizei)net_euler->mesh.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
@@ -347,15 +341,17 @@ void Application::render_nets()
             vertices[i][8] = net_verlet->texture[i].second;
         }
         shader_verlet->Use();
+        if (gpu_simulation) shader_verlet->SetInt("indexOffset", (int)net_euler->masses.size());
         glBindVertexArray(vao_verlet);
         glBufferData(GL_ARRAY_BUFFER, net_verlet->masses.size() * len * sizeof(float), vertices, GL_STREAM_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)0);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, len * sizeof(float), (void*)(3 * sizeof(float)));
         glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(6 * sizeof(float)));
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(7 * sizeof(float)));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
         glEnableVertexAttribArray(2);
-
+        glEnableVertexAttribArray(3);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, albedo);
         glActiveTexture(GL_TEXTURE1);
@@ -366,10 +362,6 @@ void Application::render_nets()
         glBindTexture(GL_TEXTURE_2D, roughness);
         glActiveTexture(GL_TEXTURE4);
         glBindTexture(GL_TEXTURE_2D, ao);
-        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, len * sizeof(float), (void*)(7 * sizeof(float)));
-        glEnableVertexAttribArray(3);
-
-        if (gpu_simulation) shader_verlet->SetInt("indexOffset", (int)net_euler->masses.size());
         glDrawElements(GL_TRIANGLES, (GLsizei)net_verlet->mesh.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
