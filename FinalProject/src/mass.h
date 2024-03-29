@@ -30,20 +30,16 @@ struct Mass
 
 struct Spring
 {
-    Spring(Mass *m1, Mass *m2, float k) : m1(m1), m2(m2), k(k), rest_length((m1->position - m2->position).norm()) {}
-
+    Spring(int m1, int m2, float k, double rest_length) : m1(m1), m2(m2), k(k), rest_length(rest_length) {}
+    int m1;
+    int m2;
     float k;
     double rest_length;
-
-    Mass *m1;
-    Mass *m2;
 };
 
 class Net
 {
 public:
-    int rows;
-    int cols;
     vector<Mass *> masses;
     vector<Spring *> springs;
     vector<int> mesh;
@@ -51,8 +47,6 @@ public:
 
     Net(Vector3D min_point, Vector3D max_point, int rows, int cols, float node_mass, float k1, float k2, float k3, vector<pair<int, int>> pinned_nodes)
     {
-        this->rows = rows;
-        this->cols = cols;
         // Create masses
         double grid_x = (max_point.x - min_point.x) / cols;
         double grid_y = (max_point.y - min_point.y) / rows;
@@ -66,27 +60,51 @@ public:
         // Horizontal - Structural
         for (int i = 0; i <= rows; ++i)
             for (int j = 0; j < cols; ++j)
-                springs.push_back(new Spring(masses[i * (cols + 1) + j], masses[i * (cols + 1) + j + 1], k1));
+            {
+                int m1 = i * (cols + 1) + j;
+                int m2 = i * (cols + 1) + j + 1;
+                springs.push_back(new Spring(m1, m2, k1, (masses[m1]->position - masses[m2]->position).norm()));
+            }
         // Vertical - Structural
         for (int i = 0; i < rows; ++i)
             for (int j = 0; j <= cols; ++j)
-                springs.push_back(new Spring(masses[i * (cols + 1) + j], masses[(i + 1) * (cols + 1) + j], k1));
+            {
+                int m1 = i * (cols + 1) + j;
+                int m2 = (i + 1) * (cols + 1) + j;
+                springs.push_back(new Spring(m1, m2, k1, (masses[m1]->position - masses[m2]->position).norm()));
+            }
         // Diagonal - Shear
         for (int i = 0; i < rows; ++i)
             for (int j = cols; j > 0; --j)
-                springs.push_back(new Spring(masses[i * (cols + 1) + j], masses[(i + 1) * (cols + 1) + j - 1], k2));
+            {
+                int m1 = i * (cols + 1) + j;
+                int m2 = (i + 1) * (cols + 1) + j - 1;
+                springs.push_back(new Spring(m1, m2, k2, (masses[m1]->position - masses[m2]->position).norm()));
+            }
         // Antidiagonal - Shear
         for (int i = 0; i < rows; ++i)
             for (int j = 0; j < cols; ++j)
-                springs.push_back(new Spring(masses[i * (cols + 1) + j], masses[(i + 1) * (cols + 1) + j + 1], k2));
+            {
+                int m1 = i * (cols + 1) + j;
+                int m2 = (i + 1) * (cols + 1) + j + 1;
+                springs.push_back(new Spring(m1, m2, k2, (masses[m1]->position - masses[m2]->position).norm()));
+            }
         // Horizontal - Flexion
         for (int i = 0; i <= rows; ++i)
             for (int j = 0; j < cols - 1; ++j)
-                springs.push_back(new Spring(masses[i * (cols + 1) + j], masses[i * (cols + 1) + j + 2], k3));
+            {
+                int m1 = i * (cols + 1) + j;
+                int m2 = i * (cols + 1) + j + 2;
+                springs.push_back(new Spring(m1, m2, k3, (masses[m1]->position - masses[m2]->position).norm()));
+            }
         // Vertical - Flexion
         for (int i = 0; i < rows - 1; ++i)
             for (int j = 0; j <= cols; ++j)
-                springs.push_back(new Spring(masses[i * (cols + 1) + j], masses[(i + 2) * (cols + 1) + j], k3));
+            {
+                int m1 = i * (cols + 1) + j;
+                int m2 = (i + 2) * (cols + 1) + j;
+                springs.push_back(new Spring(m1, m2, k3, (masses[m1]->position - masses[m2]->position).norm()));
+            }
 
         // Create mesh
         for (int i = 0; i < rows; ++i)
@@ -147,10 +165,10 @@ public:
         for (auto &s : springs)
         {
             // Simulate one timestep of the rope using explicit Verlet（solving constraints)
-            double distance = (s->m1->position - s->m2->position).norm();
-            Vector3D force = -s->k * (s->m1->position - s->m2->position) / distance * (distance - s->rest_length);
-            s->m1->forces += force;
-            s->m2->forces += -force;
+            double distance = (masses[s->m1]->position - masses[s->m2]->position).norm();
+            Vector3D force = -s->k * (masses[s->m1]->position - masses[s->m2]->position) / distance * (distance - s->rest_length);
+            masses[s->m1]->forces += force;
+            masses[s->m2]->forces += -force;
         }
 
         for (auto &m : masses)
@@ -174,10 +192,10 @@ public:
         for (auto &s : springs)
         {
             // Use Hooke's law to calculate the force on a node
-            double distance = (s->m1->position - s->m2->position).norm();
-            Vector3D force = -s->k * (s->m1->position - s->m2->position) / distance * (distance - s->rest_length);
-            s->m1->forces += force;
-            s->m2->forces += -force;
+            double distance = (masses[s->m1]->position - masses[s->m2]->position).norm();
+            Vector3D force = -s->k * (masses[s->m1]->position - masses[s->m2]->position) / distance * (distance - s->rest_length);
+            masses[s->m1]->forces += force;
+            masses[s->m2]->forces -= force;
         }
 
         for (auto &m : masses)

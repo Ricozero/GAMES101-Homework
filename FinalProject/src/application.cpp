@@ -26,10 +26,8 @@ Application::Application(Config config, Viewer *viewer): config(config), viewer(
             view[i][j] = i == j;
     scale = 1;
     gpu_simulation = false;
-    shader_compute = nullptr;
-    compute_work_group[0] = 1024;
-    compute_work_group[1] = 1024;
-    compute_work_group[2] = 1;
+    shader_compute_spring = nullptr;
+    shader_compute_mass = nullptr;
 }
 
 void Application::init()
@@ -136,26 +134,27 @@ void Application::create_shaders()
     // GPU computing
     if (gpu_simulation)
     {
-        int max_cwg_count[3];
-        int max_cwg_size[3];
-        int max_cwg_invocations;
-        for (int i = 0; i < 3; ++i)
-        {
-            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, i, &max_cwg_count[i]);
-            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, i, &max_cwg_size[i]);
-        }
-        glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &max_cwg_invocations);
-        printf("Max work groups: (%d, %d, %d)\n", max_cwg_count[0], max_cwg_count[1], max_cwg_count[2]);
-        printf("Max work group size: (%d, %d, %d)\n", max_cwg_size[0], max_cwg_size[1], max_cwg_size[2]);
-        printf("Max invocation number in a single local work group: %d\n", max_cwg_invocations);
-        printf("Work groups: (%d, %d, %d)\n", compute_work_group[0], compute_work_group[1], compute_work_group[2]);
+        // int max_cwg_count[3];
+        // int max_cwg_size[3];
+        // int max_cwg_invocations;
+        // for (int i = 0; i < 3; ++i)
+        // {
+        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, i, &max_cwg_count[i]);
+        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, i, &max_cwg_size[i]);
+        // }
+        // glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &max_cwg_invocations);
+        // printf("Max work groups: (%d, %d, %d)\n", max_cwg_count[0], max_cwg_count[1], max_cwg_count[2]);
+        // printf("Max work group size: (%d, %d, %d)\n", max_cwg_size[0], max_cwg_size[1], max_cwg_size[2]);
+        // printf("Max invocation number in a single local work group: %d\n", max_cwg_invocations);
+        // printf("Work groups: (%d, %d, %d)\n", compute_work_group[0], compute_work_group[1], compute_work_group[2]);
 
         shader_euler->Use();
         shader_euler->SetInt("gpuSimulation", 1);
         shader_verlet->Use();
         shader_verlet->SetInt("gpuSimulation", 1);
 
-        shader_compute = new Shader("../../src/shaders/compute.cs");
+        shader_compute_spring = new Shader("../../src/shaders/spring.cs");
+        shader_compute_mass = new Shader("../../src/shaders/mass.cs");
 
         // Shared SSBO
         glGenBuffers(1, &ssbo);
@@ -182,6 +181,54 @@ void Application::create_shaders()
         glBufferData(GL_SHADER_STORAGE_BUFFER, size * sizeof(Vertex), vertices, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
         delete[] vertices;
+
+        // Compute shader only SSBO (Mass)
+        glGenBuffers(1, &ssbo_mass);
+        struct Mass_
+        {
+            float velocity[3];
+            float mass;
+            float forces[3];
+            int pinned;
+            Mass_& operator=(const Mass& mass)
+            {
+                memset(velocity, 0, sizeof(velocity));
+                this->mass = mass.mass;
+                memset(forces, 0, sizeof(forces));
+                pinned = mass.pinned;
+                return *this;
+            }
+        };
+        Mass_* masses = new Mass_[net_euler->masses.size()];
+        for (int i = 0; i < net_euler->masses.size(); ++i) masses[i] = *net_euler->masses[i];
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_mass);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, net_euler->masses.size() * sizeof(Mass_), masses, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo_mass);
+        delete[] masses;
+
+        // Compute shader only SSBO (Spring)
+        glGenBuffers(1, &ssbo_spring);
+        struct Spring_
+        {
+            int m1;
+            int m2;
+            float k;
+            float rest_length;
+            Spring_& operator=(const Spring& spring)
+            {
+                m1 = spring.m1;
+                m2 = spring.m2;
+                k = spring.k;
+                rest_length = (float)spring.rest_length;
+                return *this;
+            }
+        };
+        Spring_* springs = new Spring_[net_euler->springs.size()];
+        for (int i = 0; i < net_euler->springs.size(); ++i) springs[i] = *net_euler->springs[i];
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_spring);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, net_euler->springs.size() * sizeof(Spring_), springs, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo_spring);
+        delete[] springs;
     }
     else
     {
@@ -197,10 +244,15 @@ void Application::destroy_shaders()
 {
     delete shader_euler;
     delete shader_verlet;
-    if (shader_compute)
+    if (shader_compute_spring)
     {
-        delete shader_compute;
-        shader_compute = nullptr;
+        delete shader_compute_spring;
+        shader_compute_spring = nullptr;
+    }
+    if (shader_compute_mass)
+    {
+        delete shader_compute_mass;
+        shader_compute_mass = nullptr;
     }
 }
 
@@ -208,8 +260,11 @@ void Application::simulate()
 {
     if (gpu_simulation)
     {
-        shader_compute->Use();
-        glDispatchCompute((GLuint)compute_work_group[0], (GLuint)compute_work_group[1], (GLuint)compute_work_group[2]);
+        shader_compute_spring->Use();
+        glDispatchCompute(net_euler->springs.size(), 1, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        shader_compute_mass->Use();
+        glDispatchCompute(net_euler->masses.size(), 1, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         return;
     }

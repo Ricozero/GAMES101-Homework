@@ -122,9 +122,11 @@ private:
     float scale;
 
     bool gpu_simulation;
-    Shader *shader_compute;
+    Shader *shader_compute_spring;
+    Shader *shader_compute_mass;
     unsigned int ssbo;
-    int compute_work_group[3];
+    unsigned int ssbo_mass;
+    unsigned int ssbo_spring;
 };
 
 #endif // APPLICATION_H
