@@ -25,10 +25,10 @@ layout (std430, binding = 1) buffer net_mass
 
 struct Spring
 {
-    int k;
-    int rest_length;
     int m1;
     int m2;
+    float k;
+    float rest_length;
 };
 layout (std430, binding = 2) buffer net_spring
 {

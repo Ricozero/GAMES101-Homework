@@ -226,7 +226,7 @@ void Application::create_shaders()
         Spring_* springs = new Spring_[net_euler->springs.size()];
         for (int i = 0; i < net_euler->springs.size(); ++i) springs[i] = *net_euler->springs[i];
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_spring);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, net_euler->springs.size() * sizeof(Spring_), springs, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, net_euler->springs.size() * sizeof(Spring_), springs, GL_STATIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo_spring);
         delete[] springs;
     }
@@ -261,10 +261,10 @@ void Application::simulate()
     if (gpu_simulation)
     {
         shader_compute_spring->Use();
-        glDispatchCompute(net_euler->springs.size(), 1, 1);
+        glDispatchCompute((int)net_euler->springs.size(), 1, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         shader_compute_mass->Use();
-        glDispatchCompute(net_euler->masses.size(), 1, 1);
+        glDispatchCompute((int)net_euler->masses.size(), 1, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         return;
     }
