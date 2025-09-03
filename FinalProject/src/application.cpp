@@ -258,36 +258,38 @@ void Application::destroy_shaders()
 
 void Application::simulate()
 {
+    static auto t_old = chrono::high_resolution_clock::now();
+    auto t_now = chrono::high_resolution_clock::now();
+    float t_elapsed = chrono::duration<float>(t_now - t_old).count();
+    t_old = t_now;
     if (gpu_simulation)
     {
         shader_compute_spring->Use();
         glDispatchCompute((int)net_euler->springs.size(), 1, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         shader_compute_mass->Use();
+        shader_compute_mass->SetFloat("delta_t", t_elapsed);
         glDispatchCompute((int)net_euler->masses.size(), 1, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-        return;
-    }
-
-    if (config.realtime)
-    {
-        static auto t_old = chrono::high_resolution_clock::now();
-        auto t_now = chrono::high_resolution_clock::now();
-        float t_elapsed = chrono::duration<float>(t_now - t_old).count();
-        t_old = t_now;
-        if (config.simulate_euler)
-            net_euler->SimulateEuler(t_elapsed, config.gravity, config.damping);
-        if (config.simulate_verlet)
-            net_verlet->SimulateVerlet(t_elapsed, config.gravity, config.damping);
     }
     else
     {
-        for (int i = 0; i < config.steps_per_frame; i++)
+        if (config.realtime)
         {
             if (config.simulate_euler)
-                net_euler->SimulateEuler(1 / (float)config.steps_per_frame, config.gravity, config.damping);
+                net_euler->SimulateEuler(t_elapsed, config.gravity, config.damping);
             if (config.simulate_verlet)
-                net_verlet->SimulateVerlet(1 / (float)config.steps_per_frame, config.gravity, config.damping);
+                net_verlet->SimulateVerlet(t_elapsed, config.gravity, config.damping);
+        }
+        else
+        {
+            for (int i = 0; i < config.steps_per_frame; i++)
+            {
+                if (config.simulate_euler)
+                    net_euler->SimulateEuler(1 / (float)config.steps_per_frame, config.gravity, config.damping);
+                if (config.simulate_verlet)
+                    net_verlet->SimulateVerlet(1 / (float)config.steps_per_frame, config.gravity, config.damping);
+            }
         }
     }
 }
@@ -464,7 +466,7 @@ void Application::render_config_window()
         }
 
         ImGui::SetNextItemWidth(SLIDER_WIDTH);
-        ImGui::SliderInt("steps_per_frame", &config.steps_per_frame, 0, 1000);
+        ImGui::SliderInt("steps_per_frame", &config.steps_per_frame, 0, 100);
         ImGui::SameLine(); if (ImGui::Button("Reset##steps_per_frame")) config.steps_per_frame = DEFAULT_STEPS_PER_FRAME;
 
         if (ImGui::Button(("Switch to " + string(config.realtime ? "simulation" : "realtime") + " mode").c_str()))

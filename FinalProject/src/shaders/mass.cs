@@ -23,8 +23,9 @@ layout (std430, binding = 1) buffer net_mass
     Mass masses[];
 };
 
+uniform float delta_t;
+
 const vec3 gravity = vec3(0, -1, 0);
-const float delta_t = 0.02f;
 const float damping = 0.05f;
 
 void main()
